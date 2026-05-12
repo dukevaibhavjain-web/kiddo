@@ -155,6 +155,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
       <div style="font-size:11px;color:var(--mut);text-align:center;cursor:pointer" id="go-login">Already have an account? <span style="color:var(--acc)">Sign in</span></div>
       <div id="su-err" class="alert ae" style="display:none;margin-top:10px"></div>
     </div>
+
+    <!-- Set Password (for invited users arriving via magic link) -->
+    <div class="astep" id="s-setpass">
+      <h2 style="margin-bottom:6px">Welcome to Kiddo! &#127873;</h2>
+      <p style="font-size:13px;color:var(--mut);margin-bottom:18px">You were invited. Please set your password and tell us your name to get started.</p>
+      <div class="fg"><label>Your Name (Parent)</label><input type="text" id="sp-name" placeholder="Your name"></div>
+      <div class="fg"><label>Child's Name</label><input type="text" id="sp-child" placeholder="Your child's name"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="fg" style="flex:1;margin-bottom:0"><label>Child's Age</label><input type="number" id="sp-age" placeholder="12" min="4" max="18"></div>
+        <div class="fg" style="flex:1;margin-bottom:0"><label>Grade</label><input type="text" id="sp-grade" placeholder="Grade 7"></div>
+      </div>
+      <div class="fg"><label>Set Your Password</label><input type="password" id="sp-pass" placeholder="Min 6 characters"></div>
+      <div class="fg"><label>Confirm Password</label><input type="password" id="sp-pass2" placeholder="Same password again"></div>
+      <button class="btn btn-p" id="btn-setpass" style="width:100%;justify-content:center">Set Password &amp; Enter Kiddo &#127881;</button>
+      <div id="sp-err" class="alert ae" style="display:none;margin-top:10px"></div>
+    </div>
   </div>
 </div>
 
@@ -458,8 +474,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 //  Replace these two values with your Supabase project credentials
 //  Found at: supabase.com > your project > Settings > API
 // ================================================================
-var SURL = https://fjrueoujrhznicujjmdi.supabase.co;
-var SKEY = sb_publishable_LSSKXKY25eo4KEeBsWmTBw_bdugrqPt;
+var SURL = 'YOUR_SUPABASE_URL';
+var SKEY = 'YOUR_SUPABASE_ANON_KEY';
 
 // ── GLOBALS ──────────────────────────────────────────────────────
 var sb, usr, par, child, children = [];
@@ -476,61 +492,102 @@ function initSB() {
 
 // ── UTILS ─────────────────────────────────────────────────────────
 var $ = function(id){ return document.getElementById(id); };
-function gv(id){ var e=$( id); return e?e.value:''; }
+function gv(id){ var e=$(id); return e?e.value:''; }
 function sv(id,v){ var e=$(id); if(e)e.value=v; }
 function today(){ return new Date().toISOString().split('T')[0]; }
 function fmt(ds){ if(!ds)return ''; try{return new Date(ds).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return ds;} }
 var _tt;
 function toast(m,t){ var el=$('toast'); el.innerHTML=m; el.className='show '+(t||'inf'); clearTimeout(_tt); _tt=setTimeout(function(){el.className=''},4000); }
 function showErr(id,m){ var e=$(id); e.innerHTML=m; e.style.display='block'; }
-function showStep(n){ document.querySelectorAll('.astep').forEach(function(s){s.classList.remove('on');}); $('s-'+n).classList.add('on'); }
+function hideErr(id){ var e=$(id); if(e)e.style.display='none'; }
+function showStep(n){ document.querySelectorAll('.astep').forEach(function(s){s.classList.remove('on');}); var el=$('s-'+n); if(el)el.classList.add('on'); }
 
 // ── AUTH ──────────────────────────────────────────────────────────
+
+// Called when user clicks Sign In
 async function doLogin() {
-  var email = gv('a-email').trim(), pass = gv('a-pass');
-  if(!email||!pass){showErr('a-err','Enter email and password');return;}
+  hideErr('a-err');
+  var email=gv('a-email').trim(), pass=gv('a-pass');
+  if(!email||!pass){showErr('a-err','Please enter your email and password.');return;}
   var btn=$('btn-login'); btn.innerHTML='<span class="sp"></span> Signing in...'; btn.disabled=true;
-  var {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  var {data,error}=await sb.auth.signInWithPassword({email,password:pass});
   btn.innerHTML='Sign In &#8594;'; btn.disabled=false;
-  if(error){showErr('a-err',error.message);return;}
+  if(error){showErr('a-err',error.message==='Invalid login credentials'?'Wrong email or password. Try again.':error.message);return;}
   usr=data.user; await afterAuth(usr);
 }
 
+// Called when user self-registers via the signup form
 async function doSignup() {
+  hideErr('su-err');
   var name=gv('su-name').trim(), email=gv('su-email').trim(), pass=gv('su-pass'),
       cname=gv('su-child').trim(), ref=gv('su-ref').trim().toUpperCase();
-  if(!name||!email||!pass||!cname){showErr('su-err','Please fill all required fields');return;}
-  if(pass.length<6){showErr('su-err','Password must be at least 6 characters');return;}
+  if(!name||!email||!pass||!cname){showErr('su-err','Please fill in: your name, email, password and child\'s name.');return;}
+  if(pass.length<6){showErr('su-err','Password must be at least 6 characters.');return;}
   var btn=$('btn-signup'); btn.innerHTML='<span class="sp"></span>'; btn.disabled=true;
-  var {data,error} = await sb.auth.signUp({email,password:pass});
-  if(error){showErr('su-err',error.message);btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+  var {data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+  btn.innerHTML='Create Account &#127881;'; btn.disabled=false;
+  if(error){showErr('su-err',error.message);return;}
+  if(!data.user){showErr('su-err','Please check your email to confirm your account, then sign in.');return;}
   usr=data.user;
-  // Find referrer
+  await createParentAndChild(usr, name, email, cname, gv('su-age'), gv('su-grade'), ref);
+}
+
+// Called when an invited user (via Supabase dashboard invite) sets their password
+async function doSetPassword() {
+  hideErr('sp-err');
+  var name=gv('sp-name').trim(), cname=gv('sp-child').trim(),
+      pass=gv('sp-pass'), pass2=gv('sp-pass2');
+  if(!name||!cname){showErr('sp-err','Please enter your name and your child\'s name.');return;}
+  if(!pass||pass.length<6){showErr('sp-err','Password must be at least 6 characters.');return;}
+  if(pass!==pass2){showErr('sp-err','Passwords do not match.');return;}
+  var btn=$('btn-setpass'); btn.innerHTML='<span class="sp"></span>'; btn.disabled=true;
+  // Update the password for this invited/magic-link user
+  var {error}=await sb.auth.updateUser({password:pass});
+  btn.innerHTML='Set Password &amp; Enter Kiddo &#127881;'; btn.disabled=false;
+  if(error){showErr('sp-err',error.message);return;}
+  // Now create their parent profile
+  await createParentAndChild(usr, name, usr.email, cname, gv('sp-age'), gv('sp-grade'), '');
+}
+
+// Shared helper: creates parent row + first child + streak
+async function createParentAndChild(u, parentName, email, childName, age, grade, refCode) {
+  // Find referrer if code provided
   var referredBy=null;
-  if(ref){var {data:rp}=await sb.from('parents').select('id').eq('referral_code',ref).single();if(rp)referredBy=rp.id;}
-  // Create parent record
-  var {data:p,error:pe}=await sb.from('parents').insert({id:usr.id,email,name,referred_by:referredBy}).select().single();
-  if(pe){showErr('su-err',pe.message);btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+  if(refCode){var {data:rp}=await sb.from('parents').select('id').eq('referral_code',refCode.toUpperCase()).single();if(rp)referredBy=rp.id;}
+  // Upsert parent (in case row already exists from a previous partial signup)
+  var {data:p,error:pe}=await sb.from('parents').upsert({id:u.id,email:email,name:parentName,referred_by:referredBy},{onConflict:'id'}).select().single();
+  if(pe){toast('Profile error: '+pe.message,'err');return;}
   par=p;
   // Auto-connect with referrer
   if(referredBy){
-    await sb.from('connections').insert({requester_id:referredBy,receiver_id:usr.id,status:'accepted'});
-    await sb.from('referrals').insert({referrer_id:referredBy,referred_id:usr.id,referral_code:ref,status:'joined'});
+    await sb.from('connections').insert({requester_id:referredBy,receiver_id:u.id,status:'accepted'}).select();
+    await sb.from('referrals').insert({referrer_id:referredBy,referred_id:u.id,referral_code:refCode,status:'joined'});
   }
   // Create first child
-  var {data:c}=await sb.from('children').insert({parent_id:usr.id,name:cname,age:parseInt(gv('su-age'))||null,grade:gv('su-grade').trim()}).select().single();
+  var {data:c}=await sb.from('children').insert({parent_id:u.id,name:childName,age:parseInt(age)||null,grade:(grade||'').trim()}).select().single();
   if(c){await sb.from('streaks').insert({child_id:c.id});children=[c];child=c;}
-  btn.innerHTML='Create Account &#127881;'; btn.disabled=false;
   enterApp();
 }
 
+// afterAuth: called after any successful auth event
+// Checks what state the user is in and routes them correctly
 async function afterAuth(u) {
+  usr=u;
+  // Check if parent profile already exists
   var {data:p}=await sb.from('parents').select('*').eq('id',u.id).single();
-  if(!p){showStep('signup');$('su-email').value=u.email||'';return;}
-  par=p;
-  var {data:cc}=await sb.from('children').select('*').eq('parent_id',par.id).eq('is_active',true).order('created_at');
-  children=cc||[]; child=children[0]||null;
-  enterApp();
+  if(p){
+    // Existing user — load children and enter app
+    par=p;
+    var {data:cc}=await sb.from('children').select('*').eq('parent_id',par.id).eq('is_active',true).order('created_at');
+    children=cc||[]; child=children[0]||null;
+    enterApp();
+  } else {
+    // New user (no parent row yet) — need to collect name + child details
+    // If they came via an invite link they're already authenticated, show set-password screen
+    // If they came via self-signup they may need email confirmation
+    if(u.email){sv('sp-name','');sv('sp-child','');}
+    showStep('setpass');
+  }
 }
 
 function enterApp() {
@@ -901,20 +958,65 @@ function goPage(pg) {
 document.addEventListener('DOMContentLoaded', async function() {
   if(!initSB())return;
 
-  // Check referral in URL
-  var refUrl=new URLSearchParams(window.location.search).get('ref');
-  if(refUrl){$('su-ref').value=refUrl;showStep('signup');}
+  // ── STEP 1: Handle magic link / invite token in URL hash ──────────
+  // Supabase puts #access_token=...&type=invite in the URL when an invited
+  // user clicks their email link. We must exchange it before checking session.
+  var hashParams={};
+  if(window.location.hash){
+    window.location.hash.substring(1).split('&').forEach(function(p){
+      var kv=p.split('='); hashParams[decodeURIComponent(kv[0])]=decodeURIComponent(kv[1]||'');
+    });
+  }
+  var tokenType=hashParams['type']; // 'invite' | 'recovery' | 'signup' | 'magiclink'
+  var accessToken=hashParams['access_token'];
+  var refreshToken=hashParams['refresh_token'];
 
-  // Restore session
-  var {data:{session}}=await sb.auth.getSession();
-  if(session&&session.user){usr=session.user;await afterAuth(usr);}
+  if(accessToken && refreshToken){
+    // Exchange tokens — logs the user in from the email link
+    var {data:sd,error:se}=await sb.auth.setSession({access_token:accessToken,refresh_token:refreshToken});
+    // Clean tokens from URL bar
+    history.replaceState(null,'',window.location.pathname+window.location.search);
+    if(se){
+      showErr('a-err','This link has expired or already been used. Please request a new invitation.');
+    } else if(sd&&sd.user){
+      usr=sd.user;
+      if(tokenType==='invite'||tokenType==='signup'){
+        // Brand new invited user — no parent profile yet, show set-password screen
+        showStep('setpass');
+      } else {
+        // Magic link / recovery — may already have a profile
+        await afterAuth(usr);
+      }
+    }
+  } else {
+    // ── STEP 2: Check for an existing session (returning user) ────────
+    var {data:{session}}=await sb.auth.getSession();
+    if(session&&session.user){
+      usr=session.user;
+      await afterAuth(usr);
+    } else {
+      // Check referral code in URL ?ref=
+      var refUrl=new URLSearchParams(window.location.search).get('ref');
+      if(refUrl){sv('su-ref',refUrl);showStep('signup');}
+      // Otherwise default login screen is already showing
+    }
+  }
 
-  // Auth buttons
+  // ── BIND AUTH BUTTONS ─────────────────────────────────────────────
   $('btn-login').addEventListener('click',doLogin);
   $('btn-signup').addEventListener('click',doSignup);
-  $('go-signup').addEventListener('click',function(){showStep('signup');});
-  $('go-login').addEventListener('click',function(){showStep('login');});
-  document.querySelectorAll('#auth input').forEach(function(inp){inp.addEventListener('keydown',function(e){if(e.key==='Enter'){var s=document.querySelector('.astep.on');if(s&&s.id==='s-login')doLogin();else if(s&&s.id==='s-signup')doSignup();}});});
+  $('btn-setpass').addEventListener('click',doSetPassword);
+  $('go-signup').addEventListener('click',function(){hideErr('su-err');showStep('signup');});
+  $('go-login').addEventListener('click',function(){hideErr('a-err');showStep('login');});
+  document.querySelectorAll('#auth input').forEach(function(inp){
+    inp.addEventListener('keydown',function(e){
+      if(e.key!=='Enter')return;
+      var step=document.querySelector('.astep.on');if(!step)return;
+      if(step.id==='s-login')doLogin();
+      else if(step.id==='s-signup')doSignup();
+      else if(step.id==='s-setpass')doSetPassword();
+    });
+  });
 
   // Nav
   $('nav-tabs').addEventListener('click',function(e){var b=e.target.closest('.ntab');if(b&&b.dataset.pg)goPage(b.dataset.pg);});
