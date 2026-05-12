@@ -470,12 +470,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 
 <script>
 // ================================================================
-//  KIDDO — CONFIG
-//  Replace these two values with your Supabase project credentials
-//  Found at: supabase.com > your project > Settings > API
+//  KIDDO — PASTE YOUR SUPABASE CREDENTIALS HERE
+//  supabase.com → your project → Settings → API
+//  Copy "Project URL" and "anon public" key
 // ================================================================
-var SURL = 'YOUR_SUPABASE_URL';
-var SKEY = 'YOUR_SUPABASE_ANON_KEY';
+var SURL = https://fjrueoujrhznicujjmdi.supabase.co ;      // e.g. https://xyzxyz.supabase.co
+var SKEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqcnVlb3Vqcmh6bmljdWpqbWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTM3MDMsImV4cCI6MjA5NDEyOTcwM30.V8tuNIeNuU5Y3cayVompt9JNHfltAHjoDx5QsaQRdLs; // starts with eyJhbGci...
 
 // ── GLOBALS ──────────────────────────────────────────────────────
 var sb, usr, par, child, children = [];
@@ -485,7 +485,30 @@ var curDtTab = 'plans', voiceTarget = null, recog = null;
 
 // ── SUPABASE INIT ─────────────────────────────────────────────────
 function initSB() {
-  if (typeof supabase === 'undefined') { toast('Supabase failed to load','err'); return false; }
+  if(!SURL || SURL === 'YOUR_SUPABASE_URL' || !SKEY || SKEY === 'YOUR_SUPABASE_ANON_KEY'){
+    var authEl = document.getElementById('auth');
+    if(authEl){
+      var box = authEl.querySelector('.abox');
+      if(box){
+        box.innerHTML = '<div class="alogo">&#127873; Kiddo</div>' +
+          '<div class="atag">From what kids do, to what kids can do</div>' +
+          '<div class="alert ae" style="margin-top:16px;display:block">' +
+          '<strong>Setup Required</strong><br><br>' +
+          'The Supabase credentials are not set yet.<br><br>' +
+          'Open <code>index.html</code> in a text editor, find the two lines near the top of the script:<br><br>' +
+          '<code>var SURL = \'YOUR_SUPABASE_URL\';</code><br>' +
+          '<code>var SKEY = \'YOUR_SUPABASE_ANON_KEY\';</code><br><br>' +
+          'Replace them with your actual values from:<br>' +
+          '<strong>supabase.com → your project → Settings → API</strong>' +
+          '</div>';
+      }
+    }
+    return false;
+  }
+  if (typeof supabase === 'undefined') {
+    alert('Supabase library failed to load. Check your internet connection and refresh.');
+    return false;
+  }
   sb = supabase.createClient(SURL, SKEY);
   return true;
 }
