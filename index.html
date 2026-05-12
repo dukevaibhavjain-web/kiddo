@@ -474,7 +474,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 //  supabase.com → your project → Settings → API
 //  Copy "Project URL" and "anon public" key
 // ================================================================
-var SURL = 'https://fjrueoujrhznicujjmdi.supabase.co' ;      // e.g. https://xyzxyz.supabase.co
+var SURL = 'https://fjrueoujrhznicujjmdi.supabase.co';      // e.g. https://xyzxyz.supabase.co
 var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqcnVlb3Vqcmh6bmljdWpqbWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTM3MDMsImV4cCI6MjA5NDEyOTcwM30.V8tuNIeNuU5Y3cayVompt9JNHfltAHjoDx5QsaQRdLs'; // starts with eyJhbGci...
 
 // ── GLOBALS ──────────────────────────────────────────────────────
@@ -544,14 +544,22 @@ async function doSignup() {
   hideErr('su-err');
   var name=gv('su-name').trim(), email=gv('su-email').trim(), pass=gv('su-pass'),
       cname=gv('su-child').trim(), ref=gv('su-ref').trim().toUpperCase();
-  if(!name||!email||!pass||!cname){showErr('su-err','Please fill in: your name, email, password and child\'s name.');return;}
+  if(!name||!email||!pass||!cname){showErr('su-err',"Please fill in: your name, email, password and child's name.");return;}
   if(pass.length<6){showErr('su-err','Password must be at least 6 characters.');return;}
-  var btn=$('btn-signup'); btn.innerHTML='<span class="sp"></span>'; btn.disabled=true;
-  var {data,error}=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+  var btn=$('btn-signup'); btn.innerHTML='<span class="sp"></span> Creating...'; btn.disabled=true;
+
+  // Step 1: Create the auth user
+  var {data,error}=await sb.auth.signUp({email:email,password:pass});
+  if(error){showErr('su-err',error.message);btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+  if(!data.user){showErr('su-err','Signup failed. Try again.');btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+
+  // Step 2: Immediately sign in so auth.uid() is active before DB writes (fixes RLS)
+  var {data:ld,error:le}=await sb.auth.signInWithPassword({email:email,password:pass});
   btn.innerHTML='Create Account &#127881;'; btn.disabled=false;
-  if(error){showErr('su-err',error.message);return;}
-  if(!data.user){showErr('su-err','Please check your email to confirm your account, then sign in.');return;}
-  usr=data.user;
+  if(le){showErr('su-err','Account created but sign-in failed: '+le.message);return;}
+  usr=ld.user;
+
+  // Step 3: Now session is live — create parent + child rows
   await createParentAndChild(usr, name, email, cname, gv('su-age'), gv('su-grade'), ref);
 }
 
