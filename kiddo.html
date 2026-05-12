@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiddo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap');
+:root{--bg:#0d0d14;--surf:#15151f;--surf2:#1c1c2a;--bdr:#2a2a3f;--acc:#f5a623;--a2:#e8488a;--a3:#4ecdc4;--a4:#a855f7;--txt:#f0eee8;--mut:#7a7a9a;--sch:#06b6d4;--gr:#a855f7;--rd:#10b981;--hl:#4ecdc4;--pe:#f5a623;--rc:#3b82f6;--wt:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+/* AUTH */
+#auth{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 20% 50%,rgba(245,166,35,.08),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(232,72,138,.06),transparent 60%),var(--bg)}
+#auth.hide{display:none}
+.abox{background:var(--surf);border:1px solid var(--bdr);border-radius:20px;padding:36px;max-width:400px;width:100%}
+.alogo{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;background:linear-gradient(135deg,var(--acc),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.atag{font-size:11px;color:var(--mut);margin-bottom:24px}
+.astep{display:none}.astep.on{display:block}
+
+/* APP CHROME */
+#app{display:none}#app.on{display:block}
+#cbar{background:var(--surf);border-bottom:1px solid var(--bdr);padding:6px 16px;display:flex;align-items:center;gap:8px;overflow-x:auto}
+#sbar{background:var(--surf);border-bottom:1px solid var(--bdr);padding:6px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+nav{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--bdr);background:rgba(13,13,20,.97);position:sticky;top:0;z-index:100;backdrop-filter:blur(14px);gap:10px;flex-wrap:wrap}
+.nlogo{font-family:'Playfair Display',serif;font-size:19px;font-weight:900;background:linear-gradient(135deg,var(--acc),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.ntag{font-size:9px;color:var(--mut);display:block;margin-top:1px}
+.ntabs{display:flex;gap:2px;background:var(--surf);border-radius:10px;padding:3px;flex-wrap:wrap}
+.ntab{padding:5px 10px;border-radius:7px;border:none;background:transparent;color:var(--mut);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.ntab.on{background:var(--surf2);color:var(--txt);border:1px solid var(--bdr)}
+.nusr{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mut);cursor:pointer}
+.nusr:hover{color:var(--txt)}
+.nav-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--a2));display:flex;align-items:center;justify-content:center;font-size:13px}
+.ctab{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;border:1px solid var(--bdr);background:transparent;color:var(--mut);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.ctab.on{background:rgba(245,166,35,.15);border-color:var(--acc);color:var(--acc)}
+.ctab-add{color:var(--rd);border-color:var(--rd)}
+.spill{background:var(--surf2);border:1px solid var(--bdr);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;color:var(--mut);display:flex;align-items:center;gap:4px}
+.spill span{color:var(--acc)}
+.streak-pill{background:linear-gradient(135deg,rgba(245,166,35,.2),rgba(232,72,138,.2));border:1px solid var(--acc);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--acc)}
+
+/* PAGES */
+.page{display:none;padding:18px;max-width:1280px;margin:0 auto}.page.on{display:block}
+h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;line-height:1.1;margin-bottom:6px}
+h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px}
+h3{font-size:11px;font-weight:600;margin-bottom:7px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px;line-height:1.7}
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;padding:18px;margin-bottom:14px}
+.csm{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px;margin-bottom:7px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.ga{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.chip{display:inline-flex;align-items:center;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--bdr);background:var(--surf2);color:var(--txt);transition:all .2s;margin:2px}
+.chip:hover{border-color:var(--acc);color:var(--acc)}.chip.on{background:rgba(245,166,35,.15);border-color:var(--acc);color:var(--acc)}
+.vf{position:relative;margin-bottom:8px}
+.vf textarea,.vf input{padding-right:34px!important}
+.vbtn{position:absolute;right:6px;top:6px;width:24px;height:24px;border-radius:50%;border:none;background:var(--surf);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mut);transition:all .2s}
+.vbtn:hover{background:var(--acc);color:#fff}.vbtn.on{background:var(--wt);color:#fff;animation:vp 1s infinite}
+@keyframes vp{0%,100%{opacity:1}50%{opacity:.4}}
+input,textarea,select{background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;color:var(--txt);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;width:100%;outline:none;transition:border-color .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+textarea{min-height:68px;resize:vertical}
+label{display:block;font-size:11px;font-weight:500;color:var(--mut);margin-bottom:4px}
+.fg{margin-bottom:10px}
+.btn{padding:8px 15px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-p{background:linear-gradient(135deg,var(--acc),var(--a2));color:#fff}.btn-p:hover{opacity:.9;transform:translateY(-1px)}
+.btn-o{background:transparent;border:1px solid var(--bdr);color:var(--txt)}.btn-o:hover{border-color:var(--acc);color:var(--acc)}
+.btn-g{background:linear-gradient(135deg,#1a7a4a,#15623c);color:#fff}.btn-g:hover{opacity:.9}
+.btn-s{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt)}.btn-s:hover{border-color:var(--a3);color:var(--a3)}
+.bsm{padding:5px 10px;font-size:11px}
+.pb{height:5px;background:var(--bdr);border-radius:3px;overflow:hidden;margin-top:3px}
+.pf{height:100%;border-radius:3px;transition:width .6s ease}
+.qcard{background:var(--surf2);border-left:3px solid var(--acc);border-radius:0 9px 9px 0;padding:10px 12px;margin-bottom:7px}
+.qt{font-size:12px;font-weight:500;color:var(--txt);margin-bottom:5px;line-height:1.5}
+.erow{display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap}
+.ebtn{min-width:32px;height:32px;border-radius:7px;border:1px solid var(--bdr);background:var(--surf);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;padding:0 5px}
+.ebtn:hover,.ebtn.on{border-color:var(--acc);background:rgba(245,166,35,.15);transform:scale(1.05)}
+.alert{padding:9px 12px;border-radius:9px;font-size:12px;margin-bottom:10px;line-height:1.55;border:1px solid}
+.ai{background:rgba(78,205,196,.08);border-color:rgba(78,205,196,.3);color:var(--hl)}
+.aw{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.3);color:var(--acc)}
+.ae{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3);color:var(--wt)}
+.rlink{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;margin-bottom:5px;text-decoration:none;color:var(--txt);font-size:12px;transition:border-color .2s}
+.rlink:hover{border-color:var(--a3);color:var(--a3)}
+.hrow{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.hrow label{min-width:120px;margin:0;font-size:11px}
+.hval{font-size:11px;font-weight:600;color:var(--acc);min-width:24px;text-align:right}
+input[type=range]{-webkit-appearance:none;height:4px;background:var(--bdr);border-radius:2px;padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--acc);cursor:pointer}
+.dtable{width:100%;border-collapse:collapse;font-size:11px}
+.dtable th{background:var(--surf2);padding:6px 10px;text-align:left;color:var(--mut);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.dtable td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtable tr:hover td{background:rgba(255,255,255,.02)}
+.streak-card{background:linear-gradient(135deg,rgba(245,166,35,.15),rgba(232,72,138,.1));border:1px solid rgba(245,166,35,.4);border-radius:14px;padding:16px;text-align:center}
+.snum{font-family:'Playfair Display',serif;font-size:48px;font-weight:900;background:linear-gradient(135deg,var(--acc),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.bc{background:var(--surf2);border:1px solid var(--bdr);border-radius:12px;padding:12px;text-align:center;transition:all .2s}
+.bc.yes{border-color:var(--acc);background:rgba(245,166,35,.08)}.bc.no{opacity:.4}
+.bi{font-size:24px;margin-bottom:5px}.bn{font-size:11px;font-weight:600;margin-bottom:2px}.bd{font-size:10px;color:var(--mut)}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;margin-bottom:6px}
+.lb-row.me{border-color:var(--acc);background:rgba(245,166,35,.06)}
+.lb-av{width:30px;height:30px;border-radius:50%;background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.lb-pts{font-size:13px;font-weight:700;color:var(--acc)}.lb-str{font-size:10px;color:var(--mut)}
+.bk{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:10px;margin-bottom:6px;display:flex;gap:9px;align-items:flex-start}
+.bsp{width:5px;border-radius:3px;flex-shrink:0;align-self:stretch;min-height:34px}
+.ref-box{background:var(--surf2);border:1px solid var(--acc);border-radius:10px;padding:11px;font-size:12px;font-family:monospace;word-break:break-all;color:var(--acc);margin-bottom:10px;cursor:pointer}
+.ref-box:hover{background:rgba(245,166,35,.1)}
+.sel-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:rgba(245,166,35,.15);border:1px solid var(--acc);color:var(--acc);font-size:11px;font-weight:500}
+.sel-chip button{background:none;border:none;cursor:pointer;color:var(--acc);font-size:12px;line-height:1;padding:0}
+.div{height:1px;background:var(--bdr);margin:12px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;margin:2px}
+.bdg{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.bh{background:rgba(78,205,196,.15);color:var(--hl)}.bgg{background:rgba(168,85,247,.15);color:var(--gr)}.bs{background:rgba(6,182,212,.15);color:var(--sch)}.bp{background:rgba(245,166,35,.15);color:var(--pe)}.bw{background:rgba(239,68,68,.15);color:var(--wt)}.br{background:rgba(59,130,246,.15);color:var(--rc)}.brd{background:rgba(16,185,129,.15);color:var(--rd)}
+#toast{position:fixed;bottom:16px;right:16px;background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:10px 14px;font-size:12px;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#toast.show{transform:translateY(0);opacity:1}#toast.ok{border-color:var(--rd);color:var(--rd)}#toast.inf{border-color:var(--acc);color:var(--acc)}#toast.err{border-color:var(--wt);color:var(--wt)}
+.sp{display:inline-block;width:14px;height:14px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+@media(max-width:768px){.g2,.g3{grid-template-columns:1fr}nav{padding:8px 12px}.page{padding:12px}h1{font-size:22px}.ntabs{overflow-x:auto}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ═══ AUTH ═══ -->
+<div id="auth">
+  <div class="abox">
+    <div class="alogo">&#127873; Kiddo</div>
+    <div class="atag">From what kids do, to what kids can do</div>
+
+    <!-- Login -->
+    <div class="astep on" id="s-login">
+      <h2 style="margin-bottom:6px">Sign In</h2>
+      <p style="font-size:13px;color:var(--mut);margin-bottom:18px">Enter your email and password to continue.</p>
+      <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@email.com" autocomplete="email"></div>
+      <div class="fg"><label>Password</label><input type="password" id="a-pass" placeholder="Your password" autocomplete="current-password"></div>
+      <button class="btn btn-p" id="btn-login" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#8594;</button>
+      <div style="font-size:11px;color:var(--mut);text-align:center;cursor:pointer" id="go-signup">No account? <span style="color:var(--acc)">Sign up here</span></div>
+      <div id="a-err" class="alert ae" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- Sign Up -->
+    <div class="astep" id="s-signup">
+      <h2 style="margin-bottom:6px">Create Account</h2>
+      <p style="font-size:13px;color:var(--mut);margin-bottom:18px">Set up your Kiddo account.</p>
+      <div class="fg"><label>Your Name (Parent)</label><input type="text" id="su-name" placeholder="Your name"></div>
+      <div class="fg"><label>Email</label><input type="email" id="su-email" placeholder="you@email.com"></div>
+      <div class="fg"><label>Password</label><input type="password" id="su-pass" placeholder="Min 6 characters"></div>
+      <div class="fg"><label>Child's Name</label><input type="text" id="su-child" placeholder="Your child's name"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="fg" style="flex:1;margin-bottom:0"><label>Age</label><input type="number" id="su-age" placeholder="12" min="4" max="18"></div>
+        <div class="fg" style="flex:1;margin-bottom:0"><label>Grade</label><input type="text" id="su-grade" placeholder="Grade 7"></div>
+      </div>
+      <div class="fg"><label>Referral Code (optional)</label><input type="text" id="su-ref" placeholder="e.g. ABC12345" style="text-transform:uppercase"></div>
+      <button class="btn btn-p" id="btn-signup" style="width:100%;justify-content:center;margin-bottom:10px">Create Account &#127881;</button>
+      <div style="font-size:11px;color:var(--mut);text-align:center;cursor:pointer" id="go-login">Already have an account? <span style="color:var(--acc)">Sign in</span></div>
+      <div id="su-err" class="alert ae" style="display:none;margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app">
+  <div id="cbar">
+    <div id="child-tabs"></div>
+    <button class="ctab ctab-add" id="btn-add-child">+ Add Child</button>
+  </div>
+  <div id="sbar">
+    <div class="streak-pill" id="streak-pill">&#128293; 0 days</div>
+    <div class="spill">Plans: <span id="st-p">0</span></div>
+    <div class="spill">Journals: <span id="st-j">0</span></div>
+    <div class="spill">&#11088; <span id="st-pts">0</span> pts</div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-g bsm" id="btn-export">&#128202; Export Excel</button>
+    </div>
+  </div>
+  <nav>
+    <div><div class="nlogo">&#127873; Kiddo</div><span class="ntag">From what kids do, to what kids can do</span></div>
+    <div class="ntabs" id="nav-tabs">
+      <button class="ntab on" data-pg="home">Home</button>
+      <button class="ntab" data-pg="plan">Day Plan</button>
+      <button class="ntab" data-pg="journal">Journal</button>
+      <button class="ntab" data-pg="books">Books</button>
+      <button class="ntab" data-pg="study">Study</button>
+      <button class="ntab" data-pg="acts">Activities</button>
+      <button class="ntab" data-pg="rewards">Rewards</button>
+      <button class="ntab" data-pg="connect">Connect</button>
+      <button class="ntab" data-pg="data">Data</button>
+    </div>
+    <div class="nusr" id="nav-usr">
+      <div class="nav-av" id="nav-av">&#128104;</div>
+      <span id="nav-nm">Me</span>
+    </div>
+  </nav>
+
+  <!-- HOME -->
+  <div id="pg-home" class="page on">
+    <div style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start;padding:14px 0">
+      <div>
+        <div class="bdg bp">&#10022; Daily Companion</div>
+        <h1>Hello! &#128075;<br><span id="hgreet" style="background:linear-gradient(135deg,#f5a623,#e8488a);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Ready for today?</span></h1>
+        <p class="sub">Track the day, discover strengths, log your learning.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-p" data-pg="plan">Plan Today &#8594;</button>
+          <button class="btn btn-o" data-pg="journal">Journal</button>
+          <button class="btn btn-s" data-pg="books">&#128218; Books</button>
+          <button class="btn btn-s" data-pg="study">&#128221; Study</button>
+        </div>
+      </div>
+      <div class="streak-card" style="min-width:120px">
+        <div style="font-size:10px;color:var(--mut);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em">Streak</div>
+        <div class="snum" id="h-streak">0</div>
+        <div style="font-size:11px;margin-top:3px">&#128293; days</div>
+        <div style="font-size:10px;color:var(--mut);margin-top:4px" id="h-streak-msg">Start today!</div>
+      </div>
+    </div>
+    <div class="g3" style="margin-bottom:16px">
+      <div class="card" style="border-top:3px solid var(--acc)"><h3>Today's Plan</h3><div id="h-plan" style="font-size:12px;color:var(--mut);line-height:1.7">No plan yet.</div><button class="btn btn-p bsm" data-pg="plan" style="margin-top:8px;width:100%">Plan Today &#8594;</button></div>
+      <div class="card" style="border-top:3px solid var(--rd)"><h3>Currently Reading</h3><div id="h-book" style="font-size:12px;color:var(--mut)">No book yet.</div><button class="btn btn-s bsm" data-pg="books" style="margin-top:8px;width:100%">&#128218; Books &#8594;</button></div>
+      <div class="card" style="border-top:3px solid var(--gr)"><h3>Points</h3><div style="font-size:28px;font-family:'Playfair Display',serif;font-weight:900;color:var(--acc)" id="h-pts">0</div><div style="font-size:10px;color:var(--mut)">total points earned</div><div id="h-badges" style="margin-top:5px"></div><button class="btn btn-s bsm" data-pg="rewards" style="margin-top:8px;width:100%">&#127942; Rewards &#8594;</button></div>
+    </div>
+  </div>
+
+  <!-- DAY PLAN -->
+  <div id="pg-plan" class="page">
+    <h1>Day Planner</h1>
+    <p class="sub">Plan your full day — school included. Search or type activities. Voice input on every field.</p>
+    <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-o bsm" id="pp">&#8592;</button>
+      <input type="date" id="pdate" style="width:auto;padding:6px 10px;font-size:12px">
+      <button class="btn btn-o bsm" id="pn">&#8594;</button>
+      <button class="btn btn-s bsm" id="pt">Today</button>
+      <select id="dtype" style="width:auto;padding:6px 10px;font-size:12px">
+        <option value="school">&#128197; School Day</option>
+        <option value="weekend">&#127749; Weekend / Holiday</option>
+        <option value="exam">&#128221; Exam Day</option>
+      </select>
+    </div>
+    <div id="dnote" class="alert ai">&#128197; <strong>School Day</strong> &#8212; School pre-set at 6.5 hrs.</div>
+    <div class="g2">
+      <div>
+        <div class="card">
+          <h3>Time Blocks (hours)</h3>
+          <div id="sliders"></div>
+          <div class="div"></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span style="color:var(--mut)">Total:</span><span id="ptot" style="color:var(--acc);font-weight:600">0h</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mut)">Remaining in 24h:</span><span id="prem" style="color:var(--mut);font-weight:600">24h</span></div>
+        </div>
+        <div class="card">
+          <h3>Activities</h3>
+          <div style="position:relative;margin-bottom:8px"><span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mut)">&#128269;</span><input type="text" id="asrch" placeholder="Search activities..." style="padding-left:28px"></div>
+          <div style="display:flex;gap:7px;margin-bottom:8px"><input type="text" id="acust" placeholder="Type a custom activity..." style="flex:1"><button class="btn btn-p bsm" id="btn-acust">+ Add</button></div>
+          <div style="font-size:10px;color:var(--mut);margin-bottom:4px">Selected today:</div>
+          <div id="asel" style="display:flex;flex-wrap:wrap;gap:5px;min-height:26px;padding:5px;background:var(--surf2);border-radius:8px;border:1px solid var(--bdr);margin-bottom:8px"></div>
+          <div style="font-size:10px;color:var(--mut);margin-bottom:4px">All activities (tap to add):</div>
+          <div id="achips" style="max-height:210px;overflow-y:auto;padding:2px"></div>
+        </div>
+        <div class="card"><h3>Notes</h3><div class="vf"><textarea id="pnotes" placeholder="Any context..." style="min-height:46px"></textarea><button class="vbtn" data-t="pnotes">&#127908;</button></div></div>
+        <button class="btn btn-p" id="btn-sp" style="width:100%">&#128190; Save Plan (+10 pts)</button>
+      </div>
+      <div>
+        <div class="card"><h3>Distribution</h3><svg id="ppie" viewBox="0 0 200 200" width="100%" style="max-height:165px"></svg><div id="pleg" style="margin-top:8px"></div></div>
+        <div class="card"><h3>Balance</h3><div id="pbal"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOURNAL -->
+  <div id="pg-journal" class="page">
+    <h1>Daily Journal</h1>
+    <p class="sub">Tap &#127908; on any field to speak instead of type. Her voice and yours, side by side. Fully private.</p>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:110px"><label>Date</label><input type="date" id="jdate"></div>
+        <div style="flex:1;min-width:110px"><label>Day type</label><select id="jtype"><option value="school">&#128197; School</option><option value="weekend">&#127749; Weekend</option><option value="exam">&#128221; Exam</option><option value="holiday">&#127881; Holiday</option></select></div>
+        <div style="flex:2;min-width:160px"><label>Her mood</label><div class="erow" id="moods">
+          <button class="ebtn" data-mood="Sleepy">&#128564;</button><button class="ebtn" data-mood="Neutral">&#128528;</button><button class="ebtn" data-mood="OK">&#128578;</button><button class="ebtn" data-mood="Happy">&#128522;</button><button class="ebtn" data-mood="Excited">&#129321;</button>
+        </div></div>
+      </div>
+    </div>
+    <div class="g2">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--acc);margin-bottom:8px">&#10022; HER VOICE</div>
+        <div style="font-size:10px;color:var(--sch);font-weight:600;margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em">&#127979; School</div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#128218; How was school? Any moment that stood out?</p><div class="vf"><textarea id="j-s1" placeholder="In school today..."></textarea><button class="vbtn" data-t="j-s1">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#128221; Homework done? What felt easy or hard?</p><div class="vf"><textarea id="j-s2" placeholder="I finished... I struggled with..."></textarea><button class="vbtn" data-t="j-s2">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#129504; Tuition or extra class today?</p><div class="vf"><textarea id="j-s3" placeholder="At tuition..."></textarea><button class="vbtn" data-t="j-s3">&#127908;</button></div></div>
+        <div class="div"></div>
+        <div style="font-size:10px;color:var(--acc);font-weight:600;margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em">&#127775; Discovery</div>
+        <div class="qcard"><p class="qt">&#9889; What activity excited you most today?</p><div class="vf"><textarea id="j1" placeholder="The thing that lit me up..."></textarea><button class="vbtn" data-t="j1">&#127908;</button></div></div>
+        <div class="qcard"><p class="qt">&#128564; What felt boring or draining?</p><div class="vf"><textarea id="j2" placeholder="I didn't enjoy..."></textarea><button class="vbtn" data-t="j2">&#127908;</button></div></div>
+        <div class="qcard"><p class="qt">&#8987; Did you lose track of time doing anything?</p><div class="vf"><textarea id="j3" placeholder="Time flew when..."></textarea><button class="vbtn" data-t="j3">&#127908;</button></div></div>
+        <div class="qcard"><p class="qt">&#128161; One discovery about yourself?</p><div class="vf"><textarea id="j4" placeholder="Today I realized..."></textarea><button class="vbtn" data-t="j4">&#127908;</button></div></div>
+        <div class="qcard">
+          <p class="qt">&#9889; Energy level (tap) + what charged or drained you?</p>
+          <div class="erow" id="enrg"><button class="ebtn" data-nrg="1">1</button><button class="ebtn" data-nrg="2">2</button><button class="ebtn" data-nrg="3">3</button><button class="ebtn" data-nrg="4">4</button><button class="ebtn" data-nrg="5">5</button></div>
+          <div class="vf"><textarea id="j6" placeholder="Energy from..." style="min-height:42px"></textarea><button class="vbtn" data-t="j6">&#127908;</button></div>
+        </div>
+        <div class="qcard"><p class="qt">&#128302; What would you do differently tomorrow?</p><div class="vf"><textarea id="j7" placeholder="Tomorrow I want to..."></textarea><button class="vbtn" data-t="j7">&#127908;</button></div></div>
+        <button class="btn btn-p" id="btn-jher" style="width:100%;margin-top:5px">&#128190; Save Her Journal (+15 pts)</button>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--a4);margin-bottom:8px">&#128104; DAD'S VIEW</div>
+        <div style="font-size:10px;color:var(--sch);font-weight:600;margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em">&#127979; School Obs.</div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#128218; How did she seem about school?</p><div class="vf"><textarea id="p-s1" placeholder="She seemed..."></textarea><button class="vbtn" data-t="p-s1">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#128221; Homework &#8212; self-driven or nudged?</p><div class="vf"><textarea id="p-s2" placeholder="For homework, she..."></textarea><button class="vbtn" data-t="p-s2">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--sch)"><p class="qt">&#129504; Which subjects draw her vs feel like a chore?</p><div class="vf"><textarea id="p-s3" placeholder="She seems drawn to..."></textarea><button class="vbtn" data-t="p-s3">&#127908;</button></div></div>
+        <div class="div"></div>
+        <div style="font-size:10px;color:var(--a4);font-weight:600;margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em">&#127775; Personality</div>
+        <div class="qcard" style="border-left-color:var(--a4)"><p class="qt">&#128065; What did you observe about her engagement?</p><div class="vf"><textarea id="p1" placeholder="I noticed..."></textarea><button class="vbtn" data-t="p1">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--a4)"><p class="qt">&#10024; What did she do naturally well?</p><div class="vf"><textarea id="p2" placeholder="She showed ability in..."></textarea><button class="vbtn" data-t="p2">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--a4)"><p class="qt">&#128279; Any patterns you're noticing?</p><div class="vf"><textarea id="p3" placeholder="I'm seeing a pattern..."></textarea><button class="vbtn" data-t="p3">&#127908;</button></div></div>
+        <div class="qcard" style="border-left-color:var(--a4)"><p class="qt">&#128204; Suggestions or encouragements?</p><div class="vf"><textarea id="p4" placeholder="I want to suggest..."></textarea><button class="vbtn" data-t="p4">&#127908;</button></div></div>
+        <button class="btn btn-p" id="btn-jdad" style="width:100%;margin-top:5px;background:linear-gradient(135deg,var(--a4),var(--a2))">&#128190; Save Dad's View (+10 pts)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKS -->
+  <div id="pg-books" class="page">
+    <h1>&#128218; Book Tracker</h1>
+    <p class="sub">Track reading progress, finished reads, and your wishlist.</p>
+    <div class="g2">
+      <div class="card">
+        <h3>Add / Update a Book</h3>
+        <div class="fg"><label>Book Title</label><div class="vf"><input type="text" id="btitle" placeholder="e.g. Harry Potter..."><button class="vbtn" data-t="btitle">&#127908;</button></div></div>
+        <div class="fg"><label>Author</label><input type="text" id="bauthor" placeholder="Author name"></div>
+        <div class="fg"><label>Status</label><select id="bstat"><option value="reading">&#128214; Currently Reading</option><option value="done">&#9989; Finished</option><option value="want">&#128173; Want to Read</option></select></div>
+        <div id="bpages">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="fg" style="flex:1;margin-bottom:0"><label>Pages today</label><input type="number" id="bptoday" placeholder="25" min="0"></div>
+            <div class="fg" style="flex:1;margin-bottom:0"><label>Total pages</label><input type="number" id="bptotal" placeholder="320" min="1"></div>
+          </div>
+          <div class="fg"><label>Pages read so far</label><input type="number" id="bpsfar" placeholder="80" min="0"></div>
+        </div>
+        <div class="fg"><label>Notes / Thoughts</label><div class="vf"><textarea id="bnotes" placeholder="What I loved..." style="min-height:48px"></textarea><button class="vbtn" data-t="bnotes">&#127908;</button></div></div>
+        <button class="btn btn-p" id="btn-bk" style="width:100%">&#128218; Save Book (+5 pts)</button>
+      </div>
+      <div>
+        <div class="card"><h3>&#128214; Currently Reading</h3><div id="b-rd"></div></div>
+        <div class="card"><h3>&#9989; Finished</h3><div id="b-dn"></div></div>
+        <div class="card"><h3>&#128173; Want to Read</h3><div id="b-wt"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDY -->
+  <div id="pg-study" class="page">
+    <h1>&#128221; Study Log</h1>
+    <p class="sub">Log every study session by subject. Voice input on every field.</p>
+    <div class="g2">
+      <div class="card">
+        <h3>Add Study Entry</h3>
+        <div class="fg"><label>Date</label><input type="date" id="sdate"></div>
+        <div class="fg"><label>Subject</label><select id="ssubj"><option>Mathematics</option><option>Science</option><option>English</option><option>Hindi</option><option>Social Studies</option><option>Geography</option><option>Computer Science</option><option>Art</option><option>Music</option><option>Physical Education</option><option>Sanskrit</option><option>Other</option></select></div>
+        <div class="fg"><label>Custom subject (if Other)</label><input type="text" id="scust" placeholder="e.g. Coding, Drawing..."></div>
+        <div class="fg"><label>Type of work</label><select id="stype"><option value="Homework">Homework / Assignment</option><option value="Revision">Revision / Self-Study</option><option value="Tuition">Tuition / Extra Class</option><option value="Project">Project Work</option><option value="Exam Prep">Exam Preparation</option><option value="Reading">Reading / Research</option><option value="Practice">Practice Problems</option><option value="Notes">Making Notes</option></select></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div class="fg" style="flex:1;margin-bottom:0"><label>Time (mins)</label><input type="number" id="smins" placeholder="45" min="0"></div>
+          <div class="fg" style="flex:1;margin-bottom:0"><label>Difficulty (tap)</label><div class="erow" id="sdiff"><button class="ebtn" data-dif="1">1</button><button class="ebtn" data-dif="2">2</button><button class="ebtn" data-dif="3">3</button><button class="ebtn" data-dif="4">4</button><button class="ebtn" data-dif="5">5</button></div></div>
+        </div>
+        <div class="fg"><label>What I covered</label><div class="vf"><textarea id="snotes" placeholder="Chapter 5, 20 problems..." style="min-height:52px"></textarea><button class="vbtn" data-t="snotes">&#127908;</button></div></div>
+        <div class="fg"><label>How well I understood it</label><div class="vf"><textarea id="sfeeling" placeholder="I understood... still confused about..."></textarea><button class="vbtn" data-t="sfeeling">&#127908;</button></div></div>
+        <button class="btn btn-p" id="btn-sv" style="width:100%">&#128190; Save Study Entry (+5 pts)</button>
+      </div>
+      <div>
+        <div class="card"><h3>Recent Entries</h3><div id="slog"></div></div>
+        <div class="card"><h3>Study Stats</h3><div id="sstats"><div style="font-size:12px;color:var(--mut)">Log 3+ entries to see stats.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVITIES -->
+  <div id="pg-acts" class="page">
+    <h1>Activity Library</h1>
+    <p class="sub">160+ activities across all domains. Filter by life block. Tap to mark.</p>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px" id="fbtns">
+      <button class="btn bsm btn-p" data-f="all">All</button>
+      <button class="btn bsm btn-o" data-f="school" style="border-color:var(--sch);color:var(--sch)">&#127979; School</button>
+      <button class="btn bsm btn-o" data-f="growth" style="border-color:var(--gr);color:var(--gr)">&#128640; Academics</button>
+      <button class="btn bsm btn-o" data-f="reading" style="border-color:var(--rd);color:var(--rd)">&#128218; Reading</button>
+      <button class="btn bsm btn-o" data-f="health" style="border-color:var(--hl);color:var(--hl)">&#127807; Health</button>
+      <button class="btn bsm btn-o" data-f="personality" style="border-color:var(--pe);color:var(--pe)">&#10024; Personality</button>
+      <button class="btn bsm btn-o" data-f="recovery" style="border-color:var(--rc);color:var(--rc)">&#128153; Recovery</button>
+      <button class="btn bsm btn-o" data-f="waste" style="border-color:var(--wt);color:var(--wt)">&#9888; Drain</button>
+    </div>
+    <div id="actlist"></div>
+  </div>
+
+  <!-- REWARDS -->
+  <div id="pg-rewards" class="page">
+    <h1>&#127942; Rewards</h1>
+    <p class="sub">Earn points every day. Unlock badges. Build your streak.</p>
+    <div class="g2" style="margin-bottom:16px">
+      <div class="streak-card">
+        <div style="font-size:10px;color:var(--mut);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em">Current Streak</div>
+        <div class="snum" id="r-streak">0</div>
+        <div style="font-size:12px;margin-top:3px">&#128293; consecutive days</div>
+        <div style="font-size:10px;color:var(--mut);margin-top:4px" id="r-streak-msg">Start today!</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:10px;color:var(--mut);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em">Total Points</div>
+        <div style="font-size:48px;font-family:'Playfair Display',serif;font-weight:900;color:var(--acc);line-height:1" id="r-pts">0</div>
+        <div style="font-size:10px;color:var(--mut);margin-top:3px">+10 plan &nbsp;&#183;&nbsp; +15 her journal &nbsp;&#183;&nbsp; +10 dad &nbsp;&#183;&nbsp; +5 book/study</div>
+      </div>
+    </div>
+    <h2>Badges</h2>
+    <div id="bdgrid" class="g3" style="margin-bottom:18px"></div>
+  </div>
+
+  <!-- CONNECT -->
+  <div id="pg-connect" class="page">
+    <h1>&#128101; Connect</h1>
+    <p class="sub">Share your referral link, add friends, see your network leaderboard. Only streak scores visible &#8212; journals always private.</p>
+    <div class="g2" style="margin-bottom:16px">
+      <div class="card">
+        <h3>Your Referral Link</h3>
+        <p style="font-size:12px;color:var(--mut);margin-bottom:8px">Share this with other parents. When they join, you both appear in each other's leaderboard.</p>
+        <div class="ref-box" id="ref-lnk" onclick="copyRef()">Loading...</div>
+        <button class="btn btn-p bsm" onclick="copyRef()">&#128203; Copy Link</button>
+        <div class="div"></div>
+        <h3>Referral Stats</h3>
+        <div id="ref-stats" style="font-size:12px;color:var(--mut)">Loading...</div>
+      </div>
+      <div class="card">
+        <h3>Add Friend by Email</h3>
+        <p style="font-size:12px;color:var(--mut);margin-bottom:8px">Enter their email address to send a connection request.</p>
+        <div class="fg"><label>Friend's Email</label><input type="email" id="f-email" placeholder="friend@email.com"></div>
+        <button class="btn btn-p bsm" id="btn-addf" style="width:100%">Send Request &#8594;</button>
+        <div class="div"></div>
+        <h3>Pending Requests</h3>
+        <div id="pendings" style="font-size:12px;color:var(--mut)">No pending requests.</div>
+      </div>
+    </div>
+    <h2>&#127942; Network Leaderboard <span style="font-size:12px;color:var(--mut);font-weight:400">(streak &amp; points only)</span></h2>
+    <div class="alert ai" style="margin-bottom:12px">&#128274; Journal entries, notes, and personal details are always private. Only name, streak, and points are visible to your network.</div>
+    <div id="lboard"></div>
+  </div>
+
+  <!-- DATA -->
+  <div id="pg-data" class="page">
+    <h1>Data Log</h1>
+    <p class="sub">All entries. Export to Excel and drop into Google Drive.</p>
+    <div style="display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-p bsm" id="dt-plans">&#128197; Plans</button>
+      <button class="btn btn-o bsm" id="dt-her">&#10022; Her Journal</button>
+      <button class="btn btn-o bsm" id="dt-dad">&#128104; Dad</button>
+      <button class="btn btn-o bsm" id="dt-books">&#128218; Books</button>
+      <button class="btn btn-o bsm" id="dt-study">&#128221; Study</button>
+      <div style="margin-left:auto"><button class="btn btn-g bsm" id="btn-exp2">&#128202; Export All</button></div>
+    </div>
+    <div class="card" style="overflow-x:auto;padding:0"><div id="dtbl" style="padding:14px"><div class="alert ai">Select a tab above.</div></div></div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+//  KIDDO — CONFIG
+//  Replace these two values with your Supabase project credentials
+//  Found at: supabase.com > your project > Settings > API
+// ================================================================
+var SURL = https://fjrueoujrhznicujjmdi.supabase.co;
+var SKEY = sb_publishable_LSSKXKY25eo4KEeBsWmTBw_bdugrqPt;
+
+// ── GLOBALS ──────────────────────────────────────────────────────
+var sb, usr, par, child, children = [];
+var pd = {school:6.5,growth:1.5,reading:0.5,health:1,personality:1,recovery:8,waste:0};
+var selActs = [], selMood = '', selNrg = 0, selDif = 0;
+var curDtTab = 'plans', voiceTarget = null, recog = null;
+
+// ── SUPABASE INIT ─────────────────────────────────────────────────
+function initSB() {
+  if (typeof supabase === 'undefined') { toast('Supabase failed to load','err'); return false; }
+  sb = supabase.createClient(SURL, SKEY);
+  return true;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+var $ = function(id){ return document.getElementById(id); };
+function gv(id){ var e=$( id); return e?e.value:''; }
+function sv(id,v){ var e=$(id); if(e)e.value=v; }
+function today(){ return new Date().toISOString().split('T')[0]; }
+function fmt(ds){ if(!ds)return ''; try{return new Date(ds).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return ds;} }
+var _tt;
+function toast(m,t){ var el=$('toast'); el.innerHTML=m; el.className='show '+(t||'inf'); clearTimeout(_tt); _tt=setTimeout(function(){el.className=''},4000); }
+function showErr(id,m){ var e=$(id); e.innerHTML=m; e.style.display='block'; }
+function showStep(n){ document.querySelectorAll('.astep').forEach(function(s){s.classList.remove('on');}); $('s-'+n).classList.add('on'); }
+
+// ── AUTH ──────────────────────────────────────────────────────────
+async function doLogin() {
+  var email = gv('a-email').trim(), pass = gv('a-pass');
+  if(!email||!pass){showErr('a-err','Enter email and password');return;}
+  var btn=$('btn-login'); btn.innerHTML='<span class="sp"></span> Signing in...'; btn.disabled=true;
+  var {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  btn.innerHTML='Sign In &#8594;'; btn.disabled=false;
+  if(error){showErr('a-err',error.message);return;}
+  usr=data.user; await afterAuth(usr);
+}
+
+async function doSignup() {
+  var name=gv('su-name').trim(), email=gv('su-email').trim(), pass=gv('su-pass'),
+      cname=gv('su-child').trim(), ref=gv('su-ref').trim().toUpperCase();
+  if(!name||!email||!pass||!cname){showErr('su-err','Please fill all required fields');return;}
+  if(pass.length<6){showErr('su-err','Password must be at least 6 characters');return;}
+  var btn=$('btn-signup'); btn.innerHTML='<span class="sp"></span>'; btn.disabled=true;
+  var {data,error} = await sb.auth.signUp({email,password:pass});
+  if(error){showErr('su-err',error.message);btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+  usr=data.user;
+  // Find referrer
+  var referredBy=null;
+  if(ref){var {data:rp}=await sb.from('parents').select('id').eq('referral_code',ref).single();if(rp)referredBy=rp.id;}
+  // Create parent record
+  var {data:p,error:pe}=await sb.from('parents').insert({id:usr.id,email,name,referred_by:referredBy}).select().single();
+  if(pe){showErr('su-err',pe.message);btn.innerHTML='Create Account &#127881;';btn.disabled=false;return;}
+  par=p;
+  // Auto-connect with referrer
+  if(referredBy){
+    await sb.from('connections').insert({requester_id:referredBy,receiver_id:usr.id,status:'accepted'});
+    await sb.from('referrals').insert({referrer_id:referredBy,referred_id:usr.id,referral_code:ref,status:'joined'});
+  }
+  // Create first child
+  var {data:c}=await sb.from('children').insert({parent_id:usr.id,name:cname,age:parseInt(gv('su-age'))||null,grade:gv('su-grade').trim()}).select().single();
+  if(c){await sb.from('streaks').insert({child_id:c.id});children=[c];child=c;}
+  btn.innerHTML='Create Account &#127881;'; btn.disabled=false;
+  enterApp();
+}
+
+async function afterAuth(u) {
+  var {data:p}=await sb.from('parents').select('*').eq('id',u.id).single();
+  if(!p){showStep('signup');$('su-email').value=u.email||'';return;}
+  par=p;
+  var {data:cc}=await sb.from('children').select('*').eq('parent_id',par.id).eq('is_active',true).order('created_at');
+  children=cc||[]; child=children[0]||null;
+  enterApp();
+}
+
+function enterApp() {
+  $('auth').classList.add('hide');
+  $('app').classList.add('on');
+  $('nav-nm').textContent=(par.name||'').split(' ')[0];
+  sv('jdate',today()); sv('sdate',today()); sv('pdate',today());
+  renderChildTabs(); buildAllChips(); initPlan(); initVoice(); updateBar();
+  // Check referral code in URL
+  var ref=new URLSearchParams(window.location.search).get('ref');
+  if(ref)sv('su-ref',ref);
+  goPage('home');
+}
+
+function renderChildTabs() {
+  var t=$('child-tabs'); t.innerHTML='';
+  children.forEach(function(c){
+    var b=document.createElement('button'); b.className='ctab'+(child&&c.id===child.id?' on':'');
+    b.textContent=(c.avatar_emoji||'👧')+' '+c.name;
+    b.onclick=function(){child=c;document.querySelectorAll('.ctab').forEach(function(x){x.classList.remove('on');});b.classList.add('on');updateBar();};
+    t.appendChild(b);
+  });
+}
+
+async function addChild() {
+  var n=prompt("Child's name?"); if(!n||!n.trim())return;
+  var a=prompt("Age?"); var g=prompt("Grade?");
+  var {data:c}=await sb.from('children').insert({parent_id:par.id,name:n.trim(),age:parseInt(a)||null,grade:g||null}).select().single();
+  if(c){await sb.from('streaks').insert({child_id:c.id});children.push(c);child=c;renderChildTabs();updateBar();toast(n+' added!','ok');}
+}
+
+async function signOut() { if(confirm('Sign out?')){await sb.auth.signOut();location.reload();} }
+
+// ── STREAK & POINTS ───────────────────────────────────────────────
+async function addPts(n) {
+  if(!child)return;
+  await sb.rpc('update_streak',{p_child_id:child.id,p_points:n});
+  updateBar(); checkBadges();
+}
+
+async function updateBar() {
+  if(!child||!sb)return;
+  var {data:s}=await sb.from('streaks').select('*').eq('child_id',child.id).single();
+  var st=s||{current_streak:0,total_points:0};
+  // streak
+  var msg=st.current_streak===0?'Start today!':st.current_streak<7?'Keep going! '+st.current_streak+' days!':'Amazing! '+st.current_streak+' day streak!';
+  ['streak-pill','r-streak'].forEach(function(id){var e=$(id);if(e){if(id==='streak-pill')e.innerHTML='&#128293; '+st.current_streak+' days';else e.textContent=st.current_streak;}});
+  ['h-streak'].forEach(function(id){var e=$(id);if(e)e.textContent=st.current_streak;});
+  ['h-streak-msg','r-streak-msg'].forEach(function(id){var e=$(id);if(e)e.textContent=msg;});
+  ['st-pts','h-pts','r-pts'].forEach(function(id){var e=$(id);if(e)e.textContent=st.total_points;});
+  // counts
+  var [p,h,d]=await Promise.all([
+    sb.from('daily_plans').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('journal_child').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('journal_parent').select('id',{count:'exact'}).eq('child_id',child.id)
+  ]);
+  var ep=$('st-p'),ej=$('st-j');if(ep)ep.textContent=p.count||0;if(ej)ej.textContent=(h.count||0)+(d.count||0);
+  updateHomeWidgets();
+}
+
+async function updateHomeWidgets() {
+  if(!child)return;
+  // today plan
+  var {data:pl}=await sb.from('daily_plans').select('*').eq('child_id',child.id).eq('plan_date',today()).single();
+  var hp=$('h-plan'); if(hp){if(!pl){hp.textContent='No plan saved for today yet.';}else{hp.innerHTML='<strong>'+pl.day_type+'</strong> &#183; '+pl.total_h+'h planned'+(pl.activities&&pl.activities.length?'<br>'+pl.activities.slice(0,4).join(', ')+(pl.activities.length>4?' +more':''):'');}}
+  // current book
+  var {data:bk}=await sb.from('books').select('*').eq('child_id',child.id).eq('status','reading').order('created_at',{ascending:false}).limit(1).single();
+  var hb=$('h-book'); if(hb){if(!bk){hb.textContent='No current reads.';}else{var pr=bk.pages_total&&bk.pages_so_far?Math.min(100,Math.round((bk.pages_so_far/bk.pages_total)*100)):0;hb.innerHTML='<strong>'+bk.title+'</strong>'+(bk.author?'<br><span style="color:var(--mut)">'+bk.author+'</span>':'')+(bk.pages_so_far?'<br><span style="color:var(--rd)">Page '+bk.pages_so_far+(bk.pages_total?'/'+bk.pages_total:'')+'</span>':'')+(pr?'<div class="pb" style="margin-top:4px"><div class="pf" style="width:'+pr+'%;background:var(--rd)"></div></div><div style="font-size:9px;color:var(--rd)">'+pr+'%</div>':'');}}
+}
+
+// ── BADGES ────────────────────────────────────────────────────────
+var BDGS=[
+  {id:'first_day',icon:'&#127775;',name:'First Step',desc:'Saved first day plan',chk:function(s){return s.plans>=1;}},
+  {id:'streak3',icon:'&#128293;',name:'On Fire!',desc:'3-day streak',chk:function(s){return s.streak>=3;}},
+  {id:'streak7',icon:'&#9889;',name:'Week Warrior',desc:'7 days straight',chk:function(s){return s.streak>=7;}},
+  {id:'streak14',icon:'&#127775;',name:'Fortnight Champ',desc:'14 days straight',chk:function(s){return s.streak>=14;}},
+  {id:'streak30',icon:'&#127942;',name:'Monthly Legend',desc:'30 days straight',chk:function(s){return s.streak>=30;}},
+  {id:'bookworm',icon:'&#128218;',name:'Bookworm',desc:'5+ books logged',chk:function(s){return s.books>=5;}},
+  {id:'studious',icon:'&#129504;',name:'Study Champion',desc:'10+ study entries',chk:function(s){return s.study>=10;}},
+  {id:'journalist',icon:'&#128221;',name:'Journalist',desc:'7+ journal entries',chk:function(s){return s.journals>=7;}},
+  {id:'pts100',icon:'&#11088;',name:'Century!',desc:'100+ points',chk:function(s){return s.points>=100;}},
+  {id:'pts500',icon:'&#128081;',name:'Star Performer',desc:'500+ points',chk:function(s){return s.points>=500;}}
+];
+
+async function checkBadges() {
+  if(!child||!sb)return;
+  var [st,pl,jc,jp,bk,sd,en]=await Promise.all([
+    sb.from('streaks').select('*').eq('child_id',child.id).single(),
+    sb.from('daily_plans').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('journal_child').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('journal_parent').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('books').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('study_log').select('id',{count:'exact'}).eq('child_id',child.id),
+    sb.from('badges_earned').select('badge_id').eq('child_id',child.id)
+  ]);
+  var s={streak:(st.data||{}).current_streak||0,points:(st.data||{}).total_points||0,plans:pl.count||0,journals:(jc.count||0)+(jp.count||0),books:bk.count||0,study:sd.count||0};
+  var done=(en.data||[]).map(function(e){return e.badge_id;});
+  var ins=[];
+  BDGS.forEach(function(b){if(done.indexOf(b.id)<0&&b.chk(s)){ins.push({child_id:child.id,badge_id:b.id});done.push(b.id);toast('&#127942; Badge: '+b.name+'!','ok');}});
+  if(ins.length)await sb.from('badges_earned').insert(ins);
+  renderBadges(done);
+}
+
+function renderBadges(done) {
+  var g=$('bdgrid'); if(!g)return; g.innerHTML='';
+  BDGS.forEach(function(b){
+    var ok=done&&done.indexOf(b.id)>=0;
+    var d=document.createElement('div'); d.className='bc '+(ok?'yes':'no');
+    d.innerHTML='<div class="bi">'+b.icon+'</div><div class="bn">'+b.name+'</div><div class="bd">'+b.desc+'</div>'+(ok?'<div style="font-size:10px;color:var(--rd);margin-top:2px">&#10003; Earned!</div>':'');
+    g.appendChild(d);
+  });
+  var hb=$('h-badges'); if(hb&&done)hb.innerHTML=done.length?BDGS.filter(function(b){return done.indexOf(b.id)>=0;}).slice(0,5).map(function(b){return '<span title="'+b.name+'" style="font-size:17px">'+b.icon+'</span>';}).join(''):'<div style="font-size:11px;color:var(--mut)">No badges yet!</div>';
+}
+
+// ── CONNECT / LEADERBOARD ─────────────────────────────────────────
+async function loadConnect() {
+  if(!par||!sb)return;
+  var base=window.location.origin+window.location.pathname;
+  var lnk=base+'?ref='+par.referral_code;
+  var el=$('ref-lnk'); if(el)el.textContent=lnk;
+  var {data:refs}=await sb.from('referrals').select('*').eq('referrer_id',par.id);
+  var rs=$('ref-stats'); if(rs)rs.innerHTML='<strong style="color:var(--acc)">'+(refs?refs.length:0)+'</strong> people joined via your link';
+  // Pending connection requests
+  var {data:pend}=await sb.from('connections').select('*,req:requester_id(name,email)').eq('receiver_id',par.id).eq('status','pending');
+  var pe=$('pendings');
+  if(pe){pe.innerHTML=pend&&pend.length?pend.map(function(r){return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--surf2);border-radius:8px;margin-bottom:6px"><div style="flex:1"><div style="font-size:12px;font-weight:600">'+(r.req?r.req.name:'?')+'</div><div style="font-size:10px;color:var(--mut)">'+(r.req?r.req.email:'')+'</div></div><button class="btn btn-p bsm" onclick="acceptReq(\''+r.id+'\')">Accept</button></div>';}).join(''):'<div style="font-size:12px;color:var(--mut)">No pending requests.</div>';}
+  // Leaderboard
+  var {data:conns}=await sb.from('connections').select('requester_id,receiver_id').or('requester_id.eq.'+par.id+',receiver_id.eq.'+par.id).eq('status','accepted');
+  var cps=(conns||[]).map(function(c){return c.requester_id===par.id?c.receiver_id:c.requester_id;});
+  cps.push(par.id);
+  var {data:cc}=await sb.from('children').select('id,name,avatar_emoji,parent_id,parent:parent_id(name)').in('parent_id',cps).eq('is_active',true);
+  var cids=(cc||[]).map(function(c){return c.id;});
+  var lbs=cids.length?(await sb.from('streaks').select('*').in('child_id',cids)).data:[];
+  var lbd=(lbs||[]).map(function(s){var c=(cc||[]).find(function(x){return x.id===s.child_id;});return{cid:s.child_id,cn:c?c.name:'?',ca:c?(c.avatar_emoji||'&#128103;'):'&#128103;',pn:c&&c.parent?c.parent.name:'?',str:s.current_streak||0,pts:s.total_points||0};}).sort(function(a,b){return b.pts-a.pts;});
+  var lb=$('lboard');
+  if(lb){lb.innerHTML=lbd.length?lbd.map(function(d,i){var me=child&&d.cid===child.id;var rk=i===0?'&#127947;':i===1?'&#129352;':i===2?'&#129353;':(i+1)+'';return '<div class="lb-row'+(me?' me':'')+'"><div style="font-family:\'Playfair Display\',serif;font-size:16px;font-weight:900;min-width:24px;text-align:center;color:'+(i===0?'var(--acc)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--mut)')+'">'+rk+'</div><div class="lb-av">'+d.ca+'</div><div style="flex:1"><div class="lb-child" style="font-size:13px;font-weight:600">'+d.cn+(me?' <span style="font-size:10px;color:var(--acc)">(you)</span>':'')+'</div><div class="lb-str">'+d.pn+'</div></div><div style="text-align:right"><div class="lb-pts">'+d.pts+' pts</div><div class="lb-str">&#128293; '+d.str+' days</div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--mut)">No connections yet. Share your referral link to build your network!</div>';}
+}
+
+async function acceptReq(id){await sb.from('connections').update({status:'accepted'}).eq('id',id);toast('Connected!','ok');loadConnect();}
+
+async function sendFriendReq() {
+  var email=gv('f-email').trim(); if(!email){toast('Enter an email','inf');return;}
+  var {data:f}=await sb.from('parents').select('id,name').eq('email',email).single();
+  if(!f){toast('No user found with that email. They may not have joined yet!','inf');return;}
+  if(f.id===par.id){toast("That's you!",'inf');return;}
+  var {error}=await sb.from('connections').insert({requester_id:par.id,receiver_id:f.id});
+  if(error&&error.code==='23505'){toast('Request already sent!','inf');return;}
+  toast('Request sent to '+f.name+'!','ok'); sv('f-email','');
+}
+
+function copyRef(){var b=window.location.origin+window.location.pathname;navigator.clipboard.writeText(b+'?ref='+(par.referral_code||'')).then(function(){toast('Referral link copied!','ok');});}
+
+// ── SAVE FUNCTIONS ────────────────────────────────────────────────
+async function savePlan() {
+  if(!child){toast('No child selected','err');return;}
+  var date=gv('pdate')||today(), tot=Object.values(pd).reduce(function(a,b){return a+b;},0);
+  var row={child_id:child.id,parent_id:par.id,plan_date:date,day_type:gv('dtype'),school_h:pd.school,growth_h:pd.growth,reading_h:pd.reading,health_h:pd.health,personality_h:pd.personality,recovery_h:pd.recovery,waste_h:pd.waste,total_h:+tot.toFixed(1),activities:selActs.slice(),notes:gv('pnotes')};
+  var {error}=await sb.from('daily_plans').upsert(row,{onConflict:'child_id,plan_date'});
+  if(error){toast('Error: '+error.message,'err');return;}
+  await addPts(10); toast('Day plan saved! +10 pts','ok');
+}
+
+async function saveJHer() {
+  if(!child)return;
+  var row={child_id:child.id,parent_id:par.id,journal_date:gv('jdate')||today(),day_type:gv('jtype'),mood:selMood,energy:selNrg,school_how:gv('j-s1'),school_hw:gv('j-s2'),school_tuition:gv('j-s3'),exciting:gv('j1'),boring:gv('j2'),lost_time:gv('j3'),discovery:gv('j4'),energy_detail:gv('j6'),tomorrow:gv('j7')};
+  var {error}=await sb.from('journal_child').upsert(row,{onConflict:'child_id,journal_date'});
+  if(error){toast('Error: '+error.message,'err');return;}
+  await addPts(15); toast('Her journal saved! +15 pts','ok');
+  ['j-s1','j-s2','j-s3','j1','j2','j3','j4','j6','j7'].forEach(function(id){sv(id,'');});
+  document.querySelectorAll('#moods .ebtn,#enrg .ebtn').forEach(function(b){b.classList.remove('on');}); selMood=''; selNrg=0;
+}
+
+async function saveJDad() {
+  if(!child)return;
+  var row={child_id:child.id,parent_id:par.id,journal_date:gv('jdate')||today(),day_type:gv('jtype'),school_attitude:gv('p-s1'),school_hw:gv('p-s2'),school_subjects:gv('p-s3'),engagement:gv('p1'),strengths:gv('p2'),patterns:gv('p3'),suggestions:gv('p4')};
+  var {error}=await sb.from('journal_parent').upsert(row,{onConflict:'child_id,journal_date'});
+  if(error){toast('Error: '+error.message,'err');return;}
+  await addPts(10); toast("Dad's journal saved! +10 pts",'ok');
+  ['p-s1','p-s2','p-s3','p1','p2','p3','p4'].forEach(function(id){sv(id,'');});
+}
+
+async function saveBook() {
+  if(!child)return;
+  var title=gv('btitle'); if(!title.trim()){toast('Enter a book title','inf');return;}
+  var row={child_id:child.id,parent_id:par.id,title,author:gv('bauthor'),status:gv('bstat'),pages_total:parseInt(gv('bptotal'))||null,pages_so_far:parseInt(gv('bpsfar'))||0,notes:gv('bnotes'),last_updated:today()};
+  await sb.from('books').insert(row);
+  await addPts(5); toast('"'+title+'" saved! +5 pts','ok');
+  ['btitle','bauthor','bptoday','bptotal','bpsfar','bnotes'].forEach(function(id){sv(id,'');});
+  renderBooks();
+}
+
+async function renderBooks() {
+  if(!child||!sb)return;
+  var {data:bks}=await sb.from('books').select('*').eq('child_id',child.id).order('created_at',{ascending:false});
+  var cols=['#f5a623','#e8488a','#4ecdc4','#a855f7','#10b981','#3b82f6'];
+  function bh(b,i){var col=cols[i%cols.length],pr=b.pages_total&&b.pages_so_far?Math.min(100,Math.round((b.pages_so_far/b.pages_total)*100)):0;return '<div class="bk"><div class="bsp" style="background:'+col+'"></div><div style="flex:1"><div style="font-size:13px;font-weight:600">'+b.title+'</div><div style="font-size:10px;color:var(--mut)">'+(b.author||'')+(b.pages_so_far?' &#183; p.'+b.pages_so_far+(b.pages_total?'/'+b.pages_total:''):'')+' &#183; '+fmt(b.last_updated||b.created_at)+'</div>'+(b.notes?'<div style="font-size:10px;color:var(--mut);margin-top:2px;font-style:italic">"'+b.notes.slice(0,60)+'..."</div>':'')+(pr?'<div class="pb" style="margin-top:3px"><div class="pf" style="width:'+pr+'%;background:var(--rd)"></div></div><div style="font-size:9px;color:var(--rd)">'+pr+'%</div>':'')+'</div></div>';}
+  var rd=(bks||[]).filter(function(b){return b.status==='reading';}),dn=(bks||[]).filter(function(b){return b.status==='done';}),wt=(bks||[]).filter(function(b){return b.status==='want';});
+  var re=$('b-rd'),de=$('b-dn'),we=$('b-wt');
+  if(re)re.innerHTML=rd.length?rd.map(bh).join(''):'<div style="font-size:12px;color:var(--mut)">None yet.</div>';
+  if(de)de.innerHTML=dn.length?dn.map(bh).join(''):'<div style="font-size:12px;color:var(--mut)">None yet.</div>';
+  if(we)we.innerHTML=wt.length?wt.map(bh).join(''):'<div style="font-size:12px;color:var(--mut)">Nothing added.</div>';
+}
+
+async function saveStudy() {
+  if(!child)return;
+  var subj=gv('ssubj'), cust=gv('scust'); if(subj==='Other'&&cust)subj=cust;
+  var row={child_id:child.id,parent_id:par.id,log_date:gv('sdate')||today(),subject:subj,work_type:gv('stype'),minutes:parseInt(gv('smins'))||null,difficulty:selDif||null,notes:gv('snotes'),feeling:gv('sfeeling')};
+  await sb.from('study_log').insert(row);
+  await addPts(5); toast('Study entry saved! +5 pts','ok');
+  ['smins','snotes','sfeeling','scust'].forEach(function(id){sv(id,'');});
+  document.querySelectorAll('#sdiff .ebtn').forEach(function(b){b.classList.remove('on');}); selDif=0;
+  renderStudy();
+}
+
+async function renderStudy() {
+  if(!child||!sb)return;
+  var {data:en}=await sb.from('study_log').select('*').eq('child_id',child.id).order('log_date',{ascending:false}).limit(15);
+  var sl=$('slog'); if(!sl)return;
+  if(!en||!en.length){sl.innerHTML='<div style="font-size:12px;color:var(--mut)">No entries yet.</div>';return;}
+  sl.innerHTML=en.map(function(e){var c=e.difficulty>=4?'var(--wt)':e.difficulty>=3?'var(--acc)':'var(--rd)';return '<div class="csm"><div style="font-size:12px;font-weight:600">'+e.subject+'</div><div style="font-size:10px;color:var(--mut)">'+e.work_type+' &#183; '+fmt(e.log_date)+(e.minutes?' &#183; '+e.minutes+' min':'')+(e.difficulty?' &#183; <span style="color:'+c+'">'+e.difficulty+'/5</span>':'')+'</div>'+(e.notes?'<div style="font-size:11px;color:var(--mut);margin-top:3px">'+e.notes.slice(0,100)+'</div>':'')+'</div>';}).join('');
+  var {data:all}=await sb.from('study_log').select('subject,minutes').eq('child_id',child.id);
+  var ss=$('sstats'); if(ss&&all&&all.length>=3){var subs={},tot=0;all.forEach(function(e){subs[e.subject]=(subs[e.subject]||0)+(e.minutes||0);tot+=(e.minutes||0);});var top=Object.entries(subs).sort(function(a,b){return b[1]-a[1];})[0];ss.innerHTML='<div style="font-size:12px;margin-bottom:4px">Total: <strong style="color:var(--acc)">'+tot+' mins</strong></div><div style="font-size:12px;margin-bottom:4px">Most studied: <strong style="color:var(--gr)">'+(top?top[0]:'—')+'</strong></div><div>'+Object.keys(subs).map(function(s){return '<span class="tag" style="background:rgba(168,85,247,.15);color:var(--gr)">'+s+'</span>';}).join('')+'</div>';}
+}
+
+// ── EXCEL EXPORT ──────────────────────────────────────────────────
+async function exportExcel() {
+  if(!child||!sb)return;
+  var wb=XLSX.utils.book_new(), cid=child.id;
+  var [pl,h,d,bk,st]=await Promise.all([
+    sb.from('daily_plans').select('*').eq('child_id',cid).order('plan_date'),
+    sb.from('journal_child').select('*').eq('child_id',cid).order('journal_date'),
+    sb.from('journal_parent').select('*').eq('child_id',cid).order('journal_date'),
+    sb.from('books').select('*').eq('child_id',cid).order('created_at'),
+    sb.from('study_log').select('*').eq('child_id',cid).order('log_date')
+  ]);
+  function ws(data,hdrs,keys){var rows=[hdrs].concat((data.data||[]).map(function(r){return keys.map(function(k){return Array.isArray(r[k])?r[k].join(', '):(r[k]||'');});}));return XLSX.utils.aoa_to_sheet(rows);}
+  XLSX.utils.book_append_sheet(wb,ws(pl,['Date','Type','School','Academics','Reading','Health','Personality','Recovery','Drain','Total','Activities','Notes'],['plan_date','day_type','school_h','growth_h','reading_h','health_h','personality_h','recovery_h','waste_h','total_h','activities','notes']),'Daily Plans');
+  XLSX.utils.book_append_sheet(wb,ws(h,['Date','Mood','Energy','School How','HW','Tuition','Exciting','Boring','Lost Time','Discovery','Energy Detail','Tomorrow'],['journal_date','mood','energy','school_how','school_hw','school_tuition','exciting','boring','lost_time','discovery','energy_detail','tomorrow']),'Her Journal');
+  XLSX.utils.book_append_sheet(wb,ws(d,['Date','School Attitude','HW','Subjects','Engagement','Strengths','Patterns','Suggestions'],['journal_date','school_attitude','school_hw','school_subjects','engagement','strengths','patterns','suggestions']),"Dad's Journal");
+  XLSX.utils.book_append_sheet(wb,ws(bk,['Title','Author','Status','Pages So Far','Total','Notes'],['title','author','status','pages_so_far','pages_total','notes']),'Books');
+  XLSX.utils.book_append_sheet(wb,ws(st,['Date','Subject','Type','Mins','Difficulty','Notes','Feeling'],['log_date','subject','work_type','minutes','difficulty','notes','feeling']),'Study Log');
+  XLSX.writeFile(wb,'Kiddo_'+(child.name||'')+'_'+today()+'.xlsx');
+  toast('Exported!','ok');
+}
+
+async function showDtTab(tab) {
+  curDtTab=tab;
+  ['plans','her','dad','books','study'].forEach(function(t){var b=$('dt-'+t);if(b)b.className='btn bsm '+(t===tab?'btn-p':'btn-o');});
+  if(!child||!sb)return;
+  var tm={plans:{t:'daily_plans',d:'plan_date'},her:{t:'journal_child',d:'journal_date'},dad:{t:'journal_parent',d:'journal_date'},books:{t:'books',d:'created_at'},study:{t:'study_log',d:'log_date'}};
+  var {data}=await sb.from(tm[tab].t).select('*').eq('child_id',child.id).order(tm[tab].d,{ascending:false}).limit(20);
+  var c=$('dtbl'); if(!data||!data.length){c.innerHTML='<div class="alert ai">No entries yet.</div>';return;}
+  var skip=['id','child_id','parent_id'];
+  var keys=Object.keys(data[0]).filter(function(k){return skip.indexOf(k)<0;});
+  var h='<div style="overflow-x:auto"><table class="dtable"><thead><tr>'+keys.map(function(k){return '<th>'+k.replace(/_/g,' ')+'</th>';}).join('')+'</tr></thead><tbody>';
+  data.forEach(function(row){h+='<tr>'+keys.map(function(k){var v=Array.isArray(row[k])?row[k].join(', '):String(row[k]||'');return '<td title="'+v.replace(/"/g,'&quot;')+'">'+(v.length>45?v.slice(0,45)+'...':v)+'</td>';}).join('')+'</tr>';});
+  h+='</tbody></table></div>'; if(data.length>=20)h+='<p style="font-size:10px;color:var(--mut);margin-top:5px">Showing latest 20. Export to Excel for all.</p>';
+  c.innerHTML=h;
+}
+
+// ── ACTIVITIES ────────────────────────────────────────────────────
+var ACTS={
+  'School Attendance':{b:'school',ic:'&#127979;',items:['Morning Assembly','Regular Class Periods','Science Lab','Computer Lab','Library Period','Physical Education','Art Class (School)','Music Class (School)','School Sports Practice','School Debate / Quiz','School Play / Drama','Annual Function Prep','School Club Meeting','Field Trip / Excursion','Parent-Teacher Meeting']},
+  'Homework & Assignments':{b:'growth',ic:'&#128221;',items:['Mathematics Homework','Science Assignment','English Writing','Hindi / Regional Language','Social Studies','Geography Project','Computer Science HW','Art Project','Group Project Work','Research & Presentation','Mind Map / Notes','Flashcard Making','Past Paper Practice','Essay Writing','Book Report']},
+  'Tuition & Extra Classes':{b:'growth',ic:'&#128214;',items:['Math Tuition','Science Tuition','English Coaching','Hindi Coaching','Olympiad Preparation','Abacus / Mental Math','Spoken English Class','Sanskrit Class','STEM Workshop','Coding Class (Structured)','Vedic Math','Khan Academy Sessions','Online Course (Structured)','Exam Prep Class']},
+  'Self-Directed Study':{b:'growth',ic:'&#129504;',items:['Reading Extra Subject Books','Exploring Beyond Syllabus','Educational YouTube (intent)','Self-chosen Practice Problems','Learning a Topic of Interest','Subject Mind Mapping','Concept Revision','Making Summary Notes','Science Magazine Reading']},
+  'Reading & L&D':{b:'reading',ic:'&#128218;',items:['Fiction Reading','Non-Fiction / Biographies','Comics & Graphic Novels','History Books','Science Books','Philosophy for Teens','Self-help / Growth Mindset','Poetry Reading','Mythology & Folklore','Language Learning','Audiobooks','TED-Ed Videos','Classic Literature','Newspaper / News for Kids']},
+  'Visual Arts':{b:'personality',ic:'&#127912;',items:['Drawing','Watercolor Painting','Acrylic Painting','Sketching & Doodling','Coloring & Mandalas','Graphic Designing','Digital Illustration','Photography','Calligraphy','Origami','Pottery & Clay','Collage Making','Comic Strips','Zentangle Art','Mural Art','Jewelry Design Sketching','Henna / Mehendi']},
+  'Performing Arts':{b:'personality',ic:'&#127925;',items:['Singing','Guitar','Piano / Keyboard','Tabla / Drums','Flute','Violin','Classical Dance','Western / Hip-hop Dance','Bollywood Dance','Folk Dance','Theater & Acting','Storytelling Performance','Poetry Recitation','Stand-up Comedy','Puppetry']},
+  'Home & Life Skills':{b:'personality',ic:'&#127968;',items:['Cooking','Baking','Housekeeping','Gardening','Flower Arranging','Organizing','Sewing & Stitching','Embroidery','Basic Repairs','Grocery Planning','Meal Prep','Candle Making','Composting','Fabric Art / Tie-Dye','Knitting / Crocheting']},
+  'Sports & Fitness':{b:'health',ic:'&#9917;',items:['Swimming','Cycling','Badminton','Cricket','Football / Soccer','Handball','Volleyball','Tennis','Table Tennis','Basketball','Yoga','Gymnastics','Running','Skating','Martial Arts / Karate','Kabaddi','Kho-Kho','Skipping','Archery','Frisbee','Dance Fitness','Chess','Carrom','Scrabble']},
+  'Life & People Skills':{b:'personality',ic:'&#128483;',items:['Public Speaking','Storytelling','Debate','Journaling','Creative Writing','Poetry Writing','Leadership Activities','Teamwork','Empathy Exercises','Problem Solving Puzzles','Mind Mapping','Letter Writing','Volunteering','Gratitude Practice']},
+  'Maker Skills':{b:'personality',ic:'&#128295;',items:['Basic Carpentry','Basic Electrical Work','3D Printing','Leatherwork','Textile Making','Bookbinding','Paper Crafts','Upcycling','DIY Electronics','Robotics Building','Model Making']},
+  'Gems & Jewelry':{b:'personality',ic:'&#128142;',items:['Gemstone Grading','Gemstone ID','Jewelry Design Sketching','Beading & Wire Jewelry','Wire Wrapping','Resin Art & Jewelry','Macrame Jewelry','Kundan Basics','Meenakari Basics','Jewelry Photography']},
+  'Technology & IT':{b:'growth',ic:'&#128187;',items:['Python Programming','Scratch Coding','HTML / CSS','JavaScript','Data Analysis','AI & Prompt Engineering','App Design in Figma','Video Editing','Photo Editing','Game Design','Arduino / Hardware','Robotics','Cybersecurity Basics','3D Modeling','Animation','Excel / Sheets']},
+  'Nature & Science':{b:'health',ic:'&#127807;',items:['Bird Watching','Stargazing','Botany & Plants','Insect Study','Home Science Experiments','Weather Journaling','Geology & Rocks','Environmental Projects','Aquarium Keeping','Nature Photography']},
+  'Recovery & Rest':{b:'recovery',ic:'&#128564;',items:['Sleep (8-9 hrs)','Afternoon Nap','Meditation','Breathing Exercises','Reflective Journaling','Light Walk in Nature','Quiet Reading (no goal)','Unplugged Family Time','Stretching','Hot Bath','Playing with Pets','Board Games with Family']},
+  'Time Drains':{b:'waste',ic:'&#9888;',items:['Mindless Reels / TikTok','Binge Watching OTT','Excessive Video Gaming','Aimless Chatting','Doom Scrolling','Passive YouTube','Procrastinating on HW']}
+};
+var BCOL={school:'#06b6d4',growth:'#a855f7',reading:'#10b981',health:'#4ecdc4',personality:'#f5a623',recovery:'#3b82f6',waste:'#ef4444'};
+var BLAB={school:'&#127979; School',growth:'&#128640; Academics',reading:'&#128218; Reading',health:'&#127807; Health',personality:'&#10024; Personality',recovery:'&#128153; Recovery',waste:'&#9888; Drain'};
+var BORD=['school','growth','reading','health','personality','recovery','waste'];
+var DPRE={school:{school:6.5,growth:1.5,reading:0.5,health:1,personality:1,recovery:8,waste:0,note:'&#128197; <strong>School Day</strong> &#8212; School pre-set at 6.5 hrs.'},weekend:{school:0,growth:2,reading:1,health:2,personality:2,recovery:9,waste:0.5,note:'&#127749; <strong>Weekend</strong> &#8212; Full free day.'},exam:{school:6.5,growth:4,reading:0.5,health:0.5,personality:0,recovery:8,waste:0,note:'&#128221; <strong>Exam Day</strong> &#8212; Extra study time.'}};
+
+function renderActs(f) {
+  var c=$('actlist'); if(!c)return; c.innerHTML='';
+  Object.keys(ACTS).forEach(function(cat){
+    var d=ACTS[cat]; if(f!=='all'&&d.b!==f)return;
+    var col=BCOL[d.b], sec=document.createElement('div'); sec.className='card'; sec.style.borderLeft='4px solid '+col;
+    var chips=d.items.map(function(it){return '<span class="chip alib">'+it+'</span>';}).join('');
+    sec.innerHTML='<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span style="font-size:18px">'+d.ic+'</span><div><div style="font-weight:600;font-size:12px">'+cat+'</div><span class="bdg" style="background:'+col+'22;color:'+col+'">'+BLAB[d.b]+'</span></div></div><div>'+chips+'</div>';
+    c.appendChild(sec);
+  });
+  document.querySelectorAll('.alib').forEach(function(ch){ch.addEventListener('click',function(){this.classList.toggle('on');});});
+}
+
+function buildAllChips() {
+  var c=$('achips'); if(!c)return; c.innerHTML='';
+  Object.keys(ACTS).forEach(function(cat){
+    var d=ACTS[cat]; var col=BCOL[d.b];
+    var sec=document.createElement('div'); sec.style.marginBottom='9px';
+    sec.innerHTML='<div style="font-size:10px;font-weight:600;color:'+col+';margin-bottom:3px">'+d.ic+' '+cat+'</div>';
+    var chips=document.createElement('div');
+    d.items.forEach(function(it){
+      var ch=document.createElement('span'); ch.className='chip aplan'; ch.textContent=it;
+      ch.addEventListener('click',function(){if(selActs.indexOf(it)<0){selActs.push(it);renderSelActs();toast(it+' added','inf');}});
+      chips.appendChild(ch);
+    });
+    sec.appendChild(chips); c.appendChild(sec);
+  });
+}
+
+function filterActs(q) {
+  q=q.toLowerCase();
+  document.querySelectorAll('#achips .aplan').forEach(function(ch){ch.style.display=ch.textContent.toLowerCase().indexOf(q)>=0?'':'none';});
+  document.querySelectorAll('#achips > div').forEach(function(sec){sec.style.display=Array.from(sec.querySelectorAll('.aplan')).some(function(ch){return ch.style.display!=='none';})?'':'none';});
+}
+
+function renderSelActs() {
+  var c=$('asel'); if(!c)return; c.innerHTML='';
+  if(!selActs.length){c.innerHTML='<span style="font-size:11px;color:var(--mut)">None selected</span>';return;}
+  selActs.forEach(function(a,i){
+    var ch=document.createElement('span'); ch.className='sel-chip';
+    ch.innerHTML=a+'<button data-i="'+i+'">&#215;</button>';
+    ch.querySelector('button').addEventListener('click',function(){selActs.splice(+this.dataset.i,1);renderSelActs();});
+    c.appendChild(ch);
+  });
+}
+
+// ── PLANNER ───────────────────────────────────────────────────────
+function setDType(t) {var p=DPRE[t]||DPRE.school;BORD.forEach(function(k){pd[k]=p[k];});var n=$('dnote');if(n)n.innerHTML=p.note;renderSliders();drawPie();renderBal();}
+function initPlan() {sv('pdate',today());setDType(gv('dtype')||'school');renderSelActs();}
+function renderSliders() {
+  var s=$('sliders'); if(!s)return; s.innerHTML='';
+  BORD.forEach(function(k){
+    var v=pd[k]||0,col=BCOL[k],max=k==='recovery'?12:k==='school'?9:8;
+    var row=document.createElement('div'); row.className='hrow';
+    row.innerHTML='<label style="color:'+col+'">'+BLAB[k]+'</label><input type="range" min="0" max="'+max+'" step="0.5" value="'+v+'" style="flex:1;accent-color:'+col+'" data-k="'+k+'"><span class="hval" id="hv-'+k+'">'+v+'h</span>';
+    s.appendChild(row);
+  });
+  s.querySelectorAll('input[type=range]').forEach(function(sl){sl.addEventListener('input',function(){var k=this.dataset.k;pd[k]=parseFloat(this.value);var e=$('hv-'+k);if(e)e.textContent=this.value+'h';drawPie();renderBal();updTot();});});
+}
+function updTot(){var t=BORD.reduce(function(a,k){return a+(pd[k]||0);},0);var ep=$('ptot'),er=$('prem');if(ep)ep.textContent=t.toFixed(1)+'h';if(er){var r=Math.max(0,24-t);er.textContent=r.toFixed(1)+'h';er.style.color=r<0?'var(--wt)':r<1?'var(--acc)':'var(--mut)';}}
+function drawPie(){var svg=$('ppie');if(!svg)return;var tot=BORD.reduce(function(a,k){return a+(pd[k]||0);},0)||1;var cx=100,cy=100,r=76,sa=-Math.PI/2,paths='',leg='';BORD.forEach(function(k){var v=pd[k]||0;if(v<=0)return;var col=BCOL[k],a=(v/tot)*2*Math.PI,ea=sa+a;var x1=cx+r*Math.cos(sa),y1=cy+r*Math.sin(sa),x2=cx+r*Math.cos(ea),y2=cy+r*Math.sin(ea);paths+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+(a>Math.PI?1:0)+',1 '+x2+','+y2+' Z" fill="'+col+'" opacity="0.85"/>';var ma=sa+a/2,lx=cx+r*.64*Math.cos(ma),ly=cy+r*.64*Math.sin(ma);if(v>=0.5)paths+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9" font-family="DM Sans" font-weight="600">'+v+'h</text>';leg+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;font-size:11px"><div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:'+col+'"></div><span>'+BLAB[k]+': <strong>'+v+'h</strong></span></div>';sa=ea;});svg.innerHTML=paths;var pl=$('pleg');if(pl)pl.innerHTML=leg;updTot();}
+function renderBal(){var el=$('pbal');if(!el)return;el.innerHTML=BORD.map(function(k){var v=pd[k]||0,col=BCOL[k],max=k==='recovery'?12:k==='school'?9:8,pct=Math.min((v/max)*100,100);var w='';if(k==='waste'&&v>1)w='<span style="color:var(--wt);font-size:10px"> &#9888;</span>';if(k==='growth'&&v<1)w='<span style="color:var(--acc);font-size:10px"> &#8593;</span>';if(k==='health'&&v<0.5)w='<span style="color:var(--hl);font-size:10px"> &#8593;</span>';if(k==='reading'&&v<0.25)w='<span style="color:var(--rd);font-size:10px"> &#8593;</span>';return '<div style="margin-bottom:5px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>'+BLAB[k]+w+'</span><span style="color:'+col+'">'+v+'h</span></div><div class="pb"><div class="pf" style="width:'+pct+'%;background:'+col+'"></div></div></div>';}).join('');}
+
+// ── VOICE ─────────────────────────────────────────────────────────
+function initVoice(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){document.querySelectorAll('.vbtn').forEach(function(b){b.style.display='none';});return;}recog=new SR();recog.continuous=false;recog.interimResults=false;recog.lang='en-IN';recog.onresult=function(e){var t=e.results[0][0].transcript;if(voiceTarget){var el=$(voiceTarget);if(el)el.value=(el.value?el.value+' ':'')+t;}var b=voiceTarget?document.querySelector('.vbtn[data-t="'+voiceTarget+'"]'):null;if(b)b.classList.remove('on');voiceTarget=null;toast('Voice captured!','ok');};recog.onerror=recog.onend=function(){var b=voiceTarget?document.querySelector('.vbtn[data-t="'+voiceTarget+'"]'):null;if(b)b.classList.remove('on');};}
+function toggleVoice(btn){var t=btn.dataset.t;if(!recog){toast('Voice: use Chrome or Edge','inf');return;}if(voiceTarget===t){recog.stop();voiceTarget=null;btn.classList.remove('on');return;}if(voiceTarget){var ob=document.querySelector('.vbtn[data-t="'+voiceTarget+'"]');if(ob)ob.classList.remove('on');recog.stop();}voiceTarget=t;btn.classList.add('on');recog.start();toast('Listening... &#127908;','inf');}
+
+// ── NAVIGATION ────────────────────────────────────────────────────
+function goPage(pg) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on');});
+  var pe=$('pg-'+pg); if(pe)pe.classList.add('on');
+  var tb=document.querySelector('.ntab[data-pg="'+pg+'"]'); if(tb)tb.classList.add('on');
+  if(pg==='acts')renderActs('all');
+  if(pg==='plan'){initPlan();buildAllChips();}
+  if(pg==='rewards')checkBadges();
+  if(pg==='books')renderBooks();
+  if(pg==='study')renderStudy();
+  if(pg==='connect')loadConnect();
+  if(pg==='data')showDtTab(curDtTab);
+  if(pg==='home')updateBar();
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async function() {
+  if(!initSB())return;
+
+  // Check referral in URL
+  var refUrl=new URLSearchParams(window.location.search).get('ref');
+  if(refUrl){$('su-ref').value=refUrl;showStep('signup');}
+
+  // Restore session
+  var {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user){usr=session.user;await afterAuth(usr);}
+
+  // Auth buttons
+  $('btn-login').addEventListener('click',doLogin);
+  $('btn-signup').addEventListener('click',doSignup);
+  $('go-signup').addEventListener('click',function(){showStep('signup');});
+  $('go-login').addEventListener('click',function(){showStep('login');});
+  document.querySelectorAll('#auth input').forEach(function(inp){inp.addEventListener('keydown',function(e){if(e.key==='Enter'){var s=document.querySelector('.astep.on');if(s&&s.id==='s-login')doLogin();else if(s&&s.id==='s-signup')doSignup();}});});
+
+  // Nav
+  $('nav-tabs').addEventListener('click',function(e){var b=e.target.closest('.ntab');if(b&&b.dataset.pg)goPage(b.dataset.pg);});
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-pg]:not(.ntab)');if(b&&b.dataset.pg)goPage(b.dataset.pg);
+    var v=e.target.closest('.vbtn');if(v)toggleVoice(v);
+  });
+
+  // Nav user
+  $('nav-usr').addEventListener('click',signOut);
+
+  // Child
+  $('btn-add-child').addEventListener('click',addChild);
+
+  // Day plan
+  $('dtype').addEventListener('change',function(){setDType(this.value);});
+  $('pp').addEventListener('click',function(){var d=new Date(gv('pdate')||today());d.setDate(d.getDate()-1);sv('pdate',d.toISOString().split('T')[0]);});
+  $('pn').addEventListener('click',function(){var d=new Date(gv('pdate')||today());d.setDate(d.getDate()+1);sv('pdate',d.toISOString().split('T')[0]);});
+  $('pt').addEventListener('click',function(){sv('pdate',today());});
+  $('asrch').addEventListener('input',function(){filterActs(this.value);});
+  $('btn-acust').addEventListener('click',function(){var v=gv('acust').trim();if(!v)return;if(selActs.indexOf(v)<0){selActs.push(v);renderSelActs();}sv('acust','');});
+  $('acust').addEventListener('keydown',function(e){if(e.key==='Enter')$('btn-acust').click();});
+  $('btn-sp').addEventListener('click',savePlan);
+
+  // Journal
+  document.querySelectorAll('#moods .ebtn').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('#moods .ebtn').forEach(function(x){x.classList.remove('on');});this.classList.add('on');selMood=this.dataset.mood;});});
+  document.querySelectorAll('#enrg .ebtn').forEach(function(b){b.addEventListener('click',function(){var l=+this.dataset.nrg;selNrg=l;document.querySelectorAll('#enrg .ebtn').forEach(function(x,i){x.classList.toggle('on',i<l);});});});
+  $('btn-jher').addEventListener('click',saveJHer);
+  $('btn-jdad').addEventListener('click',saveJDad);
+
+  // Books
+  $('bstat').addEventListener('change',function(){var w=$('bpages');if(w)w.style.display=this.value==='want'?'none':'';});
+  $('btn-bk').addEventListener('click',saveBook);
+
+  // Study
+  document.querySelectorAll('#sdiff .ebtn').forEach(function(b){b.addEventListener('click',function(){var l=+this.dataset.dif;selDif=l;document.querySelectorAll('#sdiff .ebtn').forEach(function(x,i){x.classList.toggle('on',i<l);});});});
+  $('btn-sv').addEventListener('click',saveStudy);
+
+  // Activities filter
+  $('fbtns').addEventListener('click',function(e){var b=e.target.closest('[data-f]');if(b)renderActs(b.dataset.f);});
+
+  // Connect
+  $('btn-addf').addEventListener('click',sendFriendReq);
+
+  // Data tabs
+  ['plans','her','dad','books','study'].forEach(function(t){var b=$('dt-'+t);if(b)b.addEventListener('click',function(){showDtTab(t);});});
+
+  // Export
+  $('btn-export').addEventListener('click',exportExcel);
+  $('btn-exp2').addEventListener('click',exportExcel);
+});
+</script>
+</body>
+</html>
